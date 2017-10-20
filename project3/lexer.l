@@ -8,44 +8,7 @@
     #include <limits>
     #include "parser.hpp"
 
-enum Token {
-T_PRINT,
-T_RETURN,
-T_IF,
-T_ELSE,
-T_WHILE,
-T_NEW,
-T_INTEGER,
-T_BOOLEAN,
-T_NONE,
-T_EQUALS,
-T_AND,
-T_OR,
-T_NOT,
-T_TRUE,
-T_FALSE,
-T_EXTENDS,
-T_DO,
-T_PLUS,
-T_MINUS,
-T_MULTIPLICATION,
-T_DIVIDE,
-T_GREATER_THAN,
-T_GREATER_THAN_EQUAL,
-T_COMMA,
-T_OPEN_BRACE,
-T_CLOSE_BRACE,
-T_OPEN_PAREN,
-T_CLOSE_PAREN,
-T_SEMI,
-T_COMMENT_START,
-T_COMMENT_END,
-T_NEWLINE,
-T_SPACE,
-T_LITERAL,
-T_ID
-};
-    
+int line = 0;    
 	void yyerror(const char *);
 %}
 
@@ -92,7 +55,8 @@ do {return T_DO;}
 ; {return T_SEMI;}
 "/*" {return T_COMMENT_START;}
 "*/" {return T_COMMENT_END;}
-\\n {return T_NEWLINE;}
+\\n {line++; return T_NEWLINE;}
+"." {return T_DOT;}
 [A-Za-z][A-Za-z0-9]* {return T_ID;}
 [0]|[1-9][0-9]* {return T_LITERAL;}
 
