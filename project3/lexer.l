@@ -8,7 +8,6 @@
     #include <limits>
     #include "parser.hpp"
 
-int line = 0;    
 	void yyerror(const char *);
 %}
 
@@ -20,7 +19,10 @@ http://flex.sourceforge.net/manual/Definitions-Section.html */
             You can find more information on start conditions here:
             http://flex.sourceforge.net/manual/Start-Conditions.html
             You will probably want to use exclusive conditions rather
-            than inclusive conditions (use the %x instead of the %s). */
+than inclusive conditions (use the %x instead of the %s).
+
+*/
+%x COMMENT
 
 %%
 
@@ -48,18 +50,21 @@ do {return T_DO;}
 ">" {return T_GREATER_THAN;}
 ">=" {return T_GREATER_THAN_EQUAL;}
 "," {return T_COMMA;}
-{ {return T_OPEN_BRACE;}
-} {return T_CLOSE_BRACE;}
+"{" {return T_OPEN_BRACE;}
+"}" {return T_CLOSE_BRACE;}
 "(" {return T_OPEN_PAREN;}
 ")" {return T_CLOSE_PAREN;}
-; {return T_SEMI;}
-"/*" {return T_COMMENT_START;}
-"*/" {return T_COMMENT_END;}
-\\n {line++; return T_NEWLINE;}
+";" {return T_SEMI;}
+"/*" {BEGIN(COMMENT);}
+<COMMENT>"*/" {BEGIN(INITIAL);}
+<COMMENT>\n {++yylineno;}
+<COMMENT>. {}
+
 "." {return T_DOT;}
 [A-Za-z][A-Za-z0-9]* {return T_ID;}
 [0]|[1-9][0-9]* {return T_LITERAL;}
-
+"\0" {return T_EOF;}
+[ \t\n] ;
 .                 { yyerror("invalid character"); }
 
 %%

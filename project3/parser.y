@@ -48,6 +48,8 @@
 %token T_LITERAL
 %token T_ID
 %token T_DOT
+%token T_EOF
+
 
 /* WRITEME: Specify precedence here */
 %left T_OR
@@ -62,12 +64,14 @@
 /* WRITEME: This rule is a placeholder, since Bison requires
             at least one rule to run successfully. Replace
             this with your appropriate start rules. */
-Start : Language
+Start : Language T_EOF
       ;
+
+/* WRITME: Write your Bison grammar specification here */
 Language : Class LanguagePrime
          ;
 LanguagePrime : Language
-              |/*epsilon*/
+              |%empty
               ;
 Class : ClassName ClassPrime
       ;
@@ -75,25 +79,25 @@ ClassPrime : T_EXTENDS SuperClassName T_OPEN_BRACE Members Methods T_CLOSE_BRACE
            | T_OPEN_BRACE Members Methods T_CLOSE_BRACE
            ;
 Members : Declaration Members
-        |/*epsilon*/
+        |%empty
         ;
 Declaration : Type MemberName T_SEMI
-            ;
+;
 Methods : MethodName T_OPEN_PAREN Parameters T_CLOSE_PAREN T_MINUS T_GREATER_THAN ReturnType T_OPEN_BRACE Body T_CLOSE_BRACE Methods
-        |/*epsilon*/
+        |%empty
         ;
 Parameters : Param
-           |/*epsilon*/
+           |%empty
            ;
 Param : Type T_ID ParamPrime
       ;
 ParamPrime : T_COMMA Param
-|/*epsilon*/
+|%empty
 ;
 Body : Decs Statements Return
 ;
 Decs : Dec_Def Decs
-|/*epsilon*/
+|%empty
 ;
 Dec_Def : Type T_ID Dec_DefPrime
 ;
@@ -101,10 +105,10 @@ Dec_DefPrime : T_SEMI
 | T_COMMA Dec_Def T_SEMI
 ;
 Statements : State_Def Statements
-|/*epsilon*/
+|%empty
 ;
 Return : T_RETURN Expression T_SEMI
-|/*epsion*/
+|%empty
 ;
 State_Def : Assignment
 | MethodCall
@@ -122,7 +126,7 @@ AssignmentPrime : T_EQUALS Expression
 If_Else : T_IF Expression T_OPEN_BRACE Block T_CLOSE_BRACE Else
 ;
 Else : T_ELSE T_OPEN_BRACE Block T_CLOSE_BRACE
-|/*epsilon*/
+|%empty
 ;
 While_Loop : T_WHILE Expression T_OPEN_BRACE Block T_CLOSE_BRACE
 ;
@@ -131,45 +135,39 @@ Do_While : T_DO T_OPEN_BRACE Block T_CLOSE_BRACE T_WHILE T_OPEN_PAREN Expression
 Block : Statements BlockPrime
 ;
 BlockPrime : Block
-|/*epsilon*/
+|%empty
 ;
 Print : T_PRINT Expression T_SEMI
 ;
 
-Expression : Expression E1
+Expression : Expression T_PLUS Expression
+| Expression T_MINUS Expression
+| Expression T_MULTIPLICATION Expression
+| Expression T_DIVIDE Expression
+| Expression T_GREATER_THAN Expression
+| Expression T_GREATER_THAN_EQUAL Expression
+| Expression T_EQUALS Expression
+| Expression T_AND Expression
+| Expression T_OR Expression
 | T_NOT Expression
-| T_MINUS Expression %prec T_NOT/*Uniary*/
-| T_ID E2
+| T_MINUS Expression %prec T_NOT
+| T_ID
+| T_ID T_DOT T_ID
 | MethodCall
 | T_OPEN_PAREN Expression T_CLOSE_PAREN
 | T_INTEGER T_LITERAL
 | T_TRUE
 | T_FALSE
-| T_NEW ClassName E3
+| T_NEW ClassName
+| T_NEW ClassName T_OPEN_PAREN Arguments T_CLOSE_PAREN
 ;
-E1 : T_PLUS Expression
-| T_MINUS Expression
-| T_MULTIPLICATION Expression
-| T_DIVIDE Expression
-| T_GREATER_THAN Expression
-| T_GREATER_THAN_EQUAL Expression
-| T_EQUALS Expression
-| T_AND Expression
-| T_OR Expression
-;
-E2 : T_DOT T_ID
-|/*epsilon*/
-;
-E3 : T_OPEN_PAREN Arguments T_CLOSE_PAREN
-|/*epsilon*/
-;
-MethodCall : T_ID MethodCallPrime
+MethodCall : MethodName MethodCallPrime
 ;
 MethodCallPrime : T_OPEN_PAREN Arguments T_CLOSE_PAREN
-| T_DOT T_ID T_OPEN_PAREN Arguments T_CLOSE_PAREN
+| T_DOT MethodName T_OPEN_PAREN Arguments T_CLOSE_PAREN
 ;
 Arguments : ArgumentsPrime
-|/*epsilon*/
+|%empty
 ;
 ArgumentsPrime : ArgumentsPrime T_COMMA Expression
 | Expression
@@ -182,21 +180,14 @@ Type : T_INTEGER
 ReturnType : Type
 | T_NONE
 ;
-
 ClassName : T_ID
 ;
-SuperClassName : T_ID
-;
-MemberName : T_ID
+SuperClassName : ClassName
 ;
 MethodName : T_ID
 ;
-
-
-
-      
-/* WRITME: Write your Bison grammar specification here */
-
+MemberName : T_ID
+;
 %%
 
 extern int yylineno;
