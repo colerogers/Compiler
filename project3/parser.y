@@ -161,10 +161,8 @@ Expression : Expression T_PLUS Expression
 | T_NEW ClassName
 | T_NEW ClassName T_OPEN_PAREN Arguments T_CLOSE_PAREN
 ;
-MethodCall : MethodName MethodCallPrime
-;
-MethodCallPrime : T_OPEN_PAREN Arguments T_CLOSE_PAREN
-| T_DOT MethodName T_OPEN_PAREN Arguments T_CLOSE_PAREN
+MethodCall : T_ID T_OPEN_PAREN Arguments T_CLOSE_PAREN
+| T_ID T_DOT T_ID T_OPEN_PAREN Arguments T_CLOSE_PAREN
 ;
 Arguments : ArgumentsPrime
 |%empty

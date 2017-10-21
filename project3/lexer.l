@@ -63,8 +63,8 @@ do {return T_DO;}
 "." {return T_DOT;}
 [A-Za-z][A-Za-z0-9]* {return T_ID;}
 [0]|[1-9][0-9]* {return T_LITERAL;}
-"\0" {return T_EOF;}
-[ \t\n] ;
+<<EOF>> {return T_EOF;}
+[ \t\n]+ ;
 .                 { yyerror("invalid character"); }
 
 %%
