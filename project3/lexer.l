@@ -43,6 +43,7 @@ true {return T_TRUE;}
 false {return T_FALSE;}
 extends {return T_EXTENDS;}
 do {return T_DO;}
+"=" {return T_EQ_SIGN;}
 "+" {return T_PLUS;}
 "-" {return T_MINUS;}
 "*" {return T_MULTIPLICATION;}
@@ -63,7 +64,6 @@ do {return T_DO;}
 "." {return T_DOT;}
 [A-Za-z][A-Za-z0-9]* {return T_ID;}
 [0]|[1-9][0-9]* {return T_LITERAL;}
-<<EOF>> {return T_EOF;}
 [ \t\n]+ ;
 .                 { yyerror("invalid character"); }
 

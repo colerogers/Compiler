@@ -48,7 +48,8 @@
 %token T_LITERAL
 %token T_ID
 %token T_DOT
-%token T_EOF
+%token T_EQ_SIGN
+
 
 
 /* WRITEME: Specify precedence here */
@@ -64,7 +65,7 @@
 /* WRITEME: This rule is a placeholder, since Bison requires
             at least one rule to run successfully. Replace
             this with your appropriate start rules. */
-Start : Language T_EOF
+Start : Language
       ;
 
 /* WRITME: Write your Bison grammar specification here */
@@ -75,17 +76,25 @@ LanguagePrime : Language
               ;
 Class : ClassName ClassPrime
       ;
-ClassPrime : T_EXTENDS SuperClassName T_OPEN_BRACE Members Methods T_CLOSE_BRACE
-           | T_OPEN_BRACE Members Methods T_CLOSE_BRACE
+ClassPrime : T_EXTENDS SuperClassName T_OPEN_BRACE A
+           | T_OPEN_BRACE A
            ;
+A : T_CLOSE_BRACE
+| Members T_CLOSE_BRACE
+| Methods T_CLOSE_BRACE
+| Members Methods T_CLOSE_BRACE
+;
 Members : Declaration Members
-        |%empty
+|%empty
         ;
 Declaration : Type MemberName T_SEMI
 ;
-Methods : MethodName T_OPEN_PAREN Parameters T_CLOSE_PAREN T_MINUS T_GREATER_THAN ReturnType T_OPEN_BRACE Body T_CLOSE_BRACE Methods
-        |%empty
+
+Methods : MethodName T_OPEN_PAREN Parameters T_CLOSE_PAREN T_MINUS T_GREATER_THAN ReturnType T_OPEN_BRACE MethodsPrime
+|%empty
         ;
+MethodsPrime : T_CLOSE_BRACE Methods
+| Body T_CLOSE_BRACE Methods
 Parameters : Param
            |%empty
            ;
@@ -102,8 +111,11 @@ Decs : Dec_Def Decs
 Dec_Def : Type T_ID Dec_DefPrime
 ;
 Dec_DefPrime : T_SEMI
-| T_COMMA Dec_Def T_SEMI
+| T_COMMA Dec_DefPrimePrime
 ;
+Dec_DefPrimePrime : T_ID Dec_DefPrime
+;
+
 Statements : State_Def Statements
 |%empty
 ;
@@ -120,22 +132,17 @@ State_Def : Assignment
 ;
 Assignment : T_ID AssignmentPrime
 ;
-AssignmentPrime : T_EQUALS Expression
-| T_DOT T_ID T_EQUALS Expression T_SEMI
+AssignmentPrime : T_EQ_SIGN Expression
+| T_DOT T_ID T_EQ_SIGN Expression T_SEMI
 ;
-If_Else : T_IF Expression T_OPEN_BRACE Block T_CLOSE_BRACE Else
+If_Else : T_IF Expression T_OPEN_BRACE Statements T_CLOSE_BRACE Else
 ;
-Else : T_ELSE T_OPEN_BRACE Block T_CLOSE_BRACE
+Else : T_ELSE T_OPEN_BRACE Statements T_CLOSE_BRACE
 |%empty
 ;
-While_Loop : T_WHILE Expression T_OPEN_BRACE Block T_CLOSE_BRACE
+While_Loop : T_WHILE Expression T_OPEN_BRACE Statements T_CLOSE_BRACE
 ;
-Do_While : T_DO T_OPEN_BRACE Block T_CLOSE_BRACE T_WHILE T_OPEN_PAREN Expression T_CLOSE_PAREN T_SEMI
-;
-Block : Statements BlockPrime
-;
-BlockPrime : Block
-|%empty
+Do_While : T_DO T_OPEN_BRACE Statements T_CLOSE_BRACE T_WHILE T_OPEN_PAREN Expression T_CLOSE_PAREN T_SEMI
 ;
 Print : T_PRINT Expression T_SEMI
 ;
@@ -155,7 +162,7 @@ Expression : Expression T_PLUS Expression
 | T_ID T_DOT T_ID
 | MethodCall
 | T_OPEN_PAREN Expression T_CLOSE_PAREN
-| T_INTEGER T_LITERAL
+| T_LITERAL
 | T_TRUE
 | T_FALSE
 | T_NEW ClassName
