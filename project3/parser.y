@@ -103,10 +103,18 @@ Param : Type T_ID ParamPrime
 ParamPrime : T_COMMA Param
 |%empty
 ;
+/*because all expressions in Body can return epsilon, all combinations must be recorded*/
 Body : Decs Statements Return
+| Decs Statements
+| Decs Return
+| Decs
+| Statements Return
+| Statements
+| Return
+| %empty
 ;
 Decs : Dec_Def Decs
-|%empty
+| Dec_Def
 ;
 Dec_Def : Type T_ID Dec_DefPrime
 ;
@@ -117,10 +125,9 @@ Dec_DefPrimePrime : T_ID Dec_DefPrime
 ;
 
 Statements : State_Def Statements
-|%empty
+| State_Def
 ;
 Return : T_RETURN Expression T_SEMI
-|%empty
 ;
 State_Def : Assignment
 | MethodCall
