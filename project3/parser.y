@@ -105,6 +105,7 @@ Body : Type T_ID CommaOrSemi
 | T_WHILE While_Loop
 | T_DO Do_While
 | T_PRINT Print
+| Expression State_Def
 | T_RETURN Return
 | T_CLOSE_BRACE
 ;
@@ -146,6 +147,7 @@ State_Def : T_ID Assignment
 | T_WHILE While_Loop
 | T_DO Do_While
 | T_PRINT Print
+| Expression State_Def
 | T_RETURN Return
 | T_CLOSE_BRACE
 ;
@@ -165,15 +167,15 @@ Print : Expression T_SEMI State_Def
 ;
 
 Expression : Expression T_PLUS Expression
-| Expression T_MINUS Expression
-| Expression T_MULTIPLICATION Expression
-| Expression T_DIVIDE Expression
-| Expression T_GREATER_THAN Expression
-| Expression T_GREATER_THAN_EQUAL Expression
-| Expression T_EQUALS Expression
-| Expression T_AND Expression
-| Expression T_OR Expression
-| T_NOT Expression
+| Expression T_MINUS Expression %prec T_MINUS
+| Expression T_MULTIPLICATION Expression %prec T_MULTIPLICATION
+| Expression T_DIVIDE Expression %prec T_DIVIDE
+| Expression T_GREATER_THAN Expression %prec T_GREATER_THAN
+| Expression T_GREATER_THAN_EQUAL Expression %prec T_GREATER_THAN_EQUAL
+| Expression T_EQUALS Expression %prec T_EQUALS
+| Expression T_AND Expression %prec T_AND
+| Expression T_OR Expression %prec T_OR
+| T_NOT Expression %prec T_NOT
 | T_MINUS Expression %prec T_NOT
 | T_ID
 | T_ID T_DOT T_ID
