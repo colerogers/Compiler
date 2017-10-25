@@ -61,7 +61,6 @@ do {return T_DO;}
 <COMMENT>"*/" {BEGIN(INITIAL);}
 <COMMENT>\n {++yylineno;}
 <COMMENT>. {}
-<COMMENT><<EOF>> {yyerror();}
 
 "." {return T_DOT;}
 [A-Za-z][A-Za-z0-9]* {return T_ID;}

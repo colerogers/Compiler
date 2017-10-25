@@ -78,33 +78,42 @@ ClassPrime : T_EXTENDS SuperClassName T_OPEN_BRACE A
 | T_OPEN_BRACE A
 ;
 A : T_CLOSE_BRACE
-| Members T_CLOSE_BRACE
-| Methods T_CLOSE_BRACE
-| Members Methods T_CLOSE_BRACE
+| Members
 ;
-Members : Declaration Members
-| Declaration
+Members : Type MemberName T_SEMI
+| Type MemberName T_SEMI Members
+| MethodName T_OPEN_PAREN IsMethod
 ;
-Declaration : Type MemberName T_SEMI
+IsMethod :  T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE Methods
+| Parameters T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE Methods
 ;
-
-Methods : Method_Dec Methods
-| Method_Dec
+Methods : M
+| Body M
 ;
-
-Method_Dec : MethodName T_OPEN_PAREN MethodsPrime
-;
-MethodsPrime : T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE MethodsPrimePrime
-| Parameters T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE MethodsPrimePrime
-;
-MethodsPrimePrime : T_CLOSE_BRACE
-| Body T_CLOSE_BRACE
+M : MethodName T_OPEN_PAREN IsMethod
+| T_CLOSE_BRACE
 ;
 Parameters : Type T_ID 
 | Type T_ID T_COMMA Parameters
 ;
 
 /*because all expressions in Body can return epsilon, all combinations must be recorded*/
+Body : Type T_ID CommaOrSemi
+| T_ID T_EQ_SIGN Assignment
+| T_ID T_DOT T_ID T_EQ_SIGN Assignment
+| T_IF If_Else
+| T_WHILE While_Loop
+| T_DO Do_While
+| T_PRINT Print
+| T_RETURN Return
+| T_CLOSE_BRACE
+;
+CommaOrSemi : T_SEMI Body
+| T_COMMA T_ID CommaOrSemi
+;
+
+
+/*
 Body : Decs Statements Return
 | Decs Statements
 | Decs Return
@@ -124,34 +133,35 @@ Dec_DefPrime : T_SEMI
 Dec_DefPrimePrime : T_ID Dec_DefPrime
 ;
 
+
 Statements : State_Def Statements
 | State_Def
 ;
+*/
 Return : T_RETURN Expression T_SEMI
 ;
-State_Def : Assignment
-| MethodCall
-| Expression
+State_Def : T_ID Assignment
+| T_ID T_DOT T_ID Assignment
 | T_IF If_Else
 | T_WHILE While_Loop
 | T_DO Do_While
 | T_PRINT Print
+| T_RETURN Return
+| T_CLOSE_BRACE
 ;
-Assignment : T_ID AssignmentPrime
+Assignment : Expression T_SEMI State_Def
 ;
-AssignmentPrime : T_EQ_SIGN Expression
-| T_DOT T_ID T_EQ_SIGN Expression T_SEMI
+
+If_Else : Expression T_OPEN_BRACE State_Def T_CLOSE_BRACE
+| Expression T_OPEN_BRACE State_Def T_CLOSE_BRACE T_ELSE Else
 ;
-If_Else : Expression T_OPEN_BRACE Statements T_CLOSE_BRACE Else
+Else : T_OPEN_BRACE State_Def T_CLOSE_BRACE State_Def
 ;
-Else : T_ELSE T_OPEN_BRACE Statements T_CLOSE_BRACE
-|%empty
+While_Loop : Expression T_OPEN_BRACE State_Def T_CLOSE_BRACE State_Def
 ;
-While_Loop : Expression T_OPEN_BRACE Statements T_CLOSE_BRACE
+Do_While : T_OPEN_BRACE State_Def T_CLOSE_BRACE T_WHILE T_OPEN_PAREN Expression T_CLOSE_PAREN T_SEMI State_Def
 ;
-Do_While : T_OPEN_BRACE Statements T_CLOSE_BRACE T_WHILE T_OPEN_PAREN Expression T_CLOSE_PAREN T_SEMI
-;
-Print : Expression T_SEMI
+Print : Expression T_SEMI State_Def
 ;
 
 Expression : Expression T_PLUS Expression
@@ -167,18 +177,16 @@ Expression : Expression T_PLUS Expression
 | T_MINUS Expression %prec T_NOT
 | T_ID
 | T_ID T_DOT T_ID
-| MethodCall
+| T_ID T_OPEN_PAREN MethodCall
+| T_ID T_DOT T_ID T_OPEN_PAREN MethodCall
 | T_OPEN_PAREN Expression T_CLOSE_PAREN
-| T_LITERAL
+| T_INTEGER T_LITERAL
 | T_TRUE
 | T_FALSE
 | T_NEW ClassName
 | T_NEW ClassName T_OPEN_PAREN Arguments T_CLOSE_PAREN
 ;
-MethodCall : T_ID T_OPEN_PAREN MC
-| T_ID T_DOT T_ID T_OPEN_PAREN MC
-;
-MC : T_CLOSE_PAREN
+MethodCall : T_CLOSE_PAREN
 | Arguments T_CLOSE_PAREN
 ;
 Arguments  : Expression ArgumentsPrime
