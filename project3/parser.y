@@ -49,6 +49,7 @@
 %token T_ID
 %token T_DOT
 %token T_EQ_SIGN
+%token T_ARROW
 
 
 
@@ -69,40 +70,40 @@ Start : Language
       ;
 
 /* WRITME: Write your Bison grammar specification here */
-Language : Class LanguagePrime
-         ;
-LanguagePrime : Language
-              |%empty
-              ;
+Language : Class | Class Language
+;
 Class : ClassName ClassPrime
-      ;
+;
 ClassPrime : T_EXTENDS SuperClassName T_OPEN_BRACE A
-           | T_OPEN_BRACE A
-           ;
+| T_OPEN_BRACE A
+;
 A : T_CLOSE_BRACE
 | Members T_CLOSE_BRACE
 | Methods T_CLOSE_BRACE
 | Members Methods T_CLOSE_BRACE
 ;
 Members : Declaration Members
-|%empty
-        ;
+| Declaration
+;
 Declaration : Type MemberName T_SEMI
 ;
 
-Methods : MethodName T_OPEN_PAREN Parameters T_CLOSE_PAREN T_MINUS T_GREATER_THAN ReturnType T_OPEN_BRACE MethodsPrime
-|%empty
-        ;
-MethodsPrime : T_CLOSE_BRACE Methods
-| Body T_CLOSE_BRACE Methods
-Parameters : Param
-           |%empty
-           ;
-Param : Type T_ID ParamPrime
-      ;
-ParamPrime : T_COMMA Param
-|%empty
+Methods : Method_Dec Methods
+| Method_Dec
 ;
+
+Method_Dec : MethodName T_OPEN_PAREN MethodsPrime
+;
+MethodsPrime : T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE MethodsPrimePrime
+| Parameters T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE MethodsPrimePrime
+;
+MethodsPrimePrime : T_CLOSE_BRACE
+| Body T_CLOSE_BRACE
+;
+Parameters : Type T_ID 
+| Type T_ID T_COMMA Parameters
+;
+
 /*because all expressions in Body can return epsilon, all combinations must be recorded*/
 Body : Decs Statements Return
 | Decs Statements
@@ -111,7 +112,6 @@ Body : Decs Statements Return
 | Statements Return
 | Statements
 | Return
-| %empty
 ;
 Decs : Dec_Def Decs
 | Dec_Def
@@ -132,26 +132,26 @@ Return : T_RETURN Expression T_SEMI
 State_Def : Assignment
 | MethodCall
 | Expression
-| If_Else
-| While_Loop
-| Do_While
-| Print
+| T_IF If_Else
+| T_WHILE While_Loop
+| T_DO Do_While
+| T_PRINT Print
 ;
 Assignment : T_ID AssignmentPrime
 ;
 AssignmentPrime : T_EQ_SIGN Expression
 | T_DOT T_ID T_EQ_SIGN Expression T_SEMI
 ;
-If_Else : T_IF Expression T_OPEN_BRACE Statements T_CLOSE_BRACE Else
+If_Else : Expression T_OPEN_BRACE Statements T_CLOSE_BRACE Else
 ;
 Else : T_ELSE T_OPEN_BRACE Statements T_CLOSE_BRACE
 |%empty
 ;
-While_Loop : T_WHILE Expression T_OPEN_BRACE Statements T_CLOSE_BRACE
+While_Loop : Expression T_OPEN_BRACE Statements T_CLOSE_BRACE
 ;
-Do_While : T_DO T_OPEN_BRACE Statements T_CLOSE_BRACE T_WHILE T_OPEN_PAREN Expression T_CLOSE_PAREN T_SEMI
+Do_While : T_OPEN_BRACE Statements T_CLOSE_BRACE T_WHILE T_OPEN_PAREN Expression T_CLOSE_PAREN T_SEMI
 ;
-Print : T_PRINT Expression T_SEMI
+Print : Expression T_SEMI
 ;
 
 Expression : Expression T_PLUS Expression
@@ -175,14 +175,16 @@ Expression : Expression T_PLUS Expression
 | T_NEW ClassName
 | T_NEW ClassName T_OPEN_PAREN Arguments T_CLOSE_PAREN
 ;
-MethodCall : T_ID T_OPEN_PAREN Arguments T_CLOSE_PAREN
-| T_ID T_DOT T_ID T_OPEN_PAREN Arguments T_CLOSE_PAREN
+MethodCall : T_ID T_OPEN_PAREN MC
+| T_ID T_DOT T_ID T_OPEN_PAREN MC
 ;
-Arguments : ArgumentsPrime
+MC : T_CLOSE_PAREN
+| Arguments T_CLOSE_PAREN
+;
+Arguments  : Expression ArgumentsPrime
+;
+ArgumentsPrime : T_COMMA ArgumentsPrime
 |%empty
-;
-ArgumentsPrime : ArgumentsPrime T_COMMA Expression
-| Expression
 ;
 
 Type : T_INTEGER
