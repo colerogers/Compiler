@@ -59,8 +59,7 @@
 %left T_GREATER_THAN T_GREATER_THAN_EQUAL T_EQUALS
 %left T_PLUS T_MINUS
 %left T_MULTIPLICATION T_DIVIDE
-%right T_NOT
-%right UMINUS
+%precedence T_NOT UMINUS
 
 %%
 
@@ -79,14 +78,10 @@ LanguagePrime : Language
 
 Class : ClassName ClassPrime
 ;
-ClassPrime : T_EXTENDS SuperClassName T_OPEN_BRACE A 
-| T_OPEN_BRACE A 
+ClassPrime : T_EXTENDS SuperClassName T_OPEN_BRACE Members 
+| T_OPEN_BRACE Members
 ;
-A : T_CLOSE_BRACE /* CLASS CLOSE */
-| Members
-;
-Members : Type MemberName T_SEMI
-| Type MemberName T_SEMI Members
+Members : Type MemberName T_SEMI Members
 | MethodName T_OPEN_PAREN IsMethod T_CLOSE_BRACE /* CLASS CLOSE */
 | T_CLOSE_BRACE /* CLASS CLOSE */
 ;
@@ -169,8 +164,7 @@ Expression : Expression T_PLUS Expression
 | T_MINUS Expression %prec UMINUS
 | T_ID /*{std::cout<<"using ID in exp"<<std::endl;}*/
 | T_ID T_DOT T_ID
-| T_ID T_OPEN_PAREN MethodCall
-| T_ID T_DOT T_ID T_OPEN_PAREN MethodCall
+| MethodCall
 | T_OPEN_PAREN Expression T_CLOSE_PAREN
 | T_LITERAL
 | T_TRUE
@@ -178,8 +172,8 @@ Expression : Expression T_PLUS Expression
 | T_NEW ClassName
 | T_NEW ClassName T_OPEN_PAREN Arguments T_CLOSE_PAREN
 ;
-MethodCall : T_CLOSE_PAREN
-| Arguments T_CLOSE_PAREN
+MethodCall : T_ID T_OPEN_PAREN Arguments T_CLOSE_PAREN
+| T_ID T_DOT T_ID T_OPEN_PAREN Arguments T_CLOSE_PAREN
 ;
 Arguments : ArgumentsPrime
 |%empty
