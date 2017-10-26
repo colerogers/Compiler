@@ -75,7 +75,6 @@ Language : Class LanguagePrime
 LanguagePrime : Language
 |%empty
 ;
-
 Class : ClassName ClassPrime
 ;
 ClassPrime : T_EXTENDS SuperClassName T_OPEN_BRACE Members 
@@ -89,16 +88,6 @@ IsMethod : Parameters T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE Body T_CLOSE
 ;
 MoreMethods: MethodName T_OPEN_PAREN Parameters T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE Body T_CLOSE_BRACE MoreMethods
 |%empty
-/*
-IsMethod : Parameters T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE Methods
-;
-Methods : M
-| Body M
-;
-M : T_CLOSE_BRACE MethodName T_OPEN_PAREN IsMethod
-| T_CLOSE_BRACE 
-;
-*/
 Parameters : Type T_ID 
 | Type T_ID T_COMMA Parameters
 |%empty
@@ -133,7 +122,6 @@ State_Def : T_ID T_EQ_SIGN Assignment
 ;
 Assignment : Expression T_SEMI State_Def
 ;
-
 If_Else : Expression T_OPEN_BRACE Block T_CLOSE_BRACE State_Def
 | Expression T_OPEN_BRACE Block T_CLOSE_BRACE T_ELSE Else
 ;
@@ -145,7 +133,6 @@ Do_While : T_OPEN_BRACE Block T_CLOSE_BRACE T_WHILE T_OPEN_PAREN Expression T_CL
 ;
 Print : Expression T_SEMI State_Def
 ;
-
 Block : T_ID T_EQ_SIGN Assignment
 | T_ID T_DOT T_ID T_EQ_SIGN Assignment
 | T_IF If_Else
@@ -154,8 +141,6 @@ Block : T_ID T_EQ_SIGN Assignment
 | T_PRINT Print
 | T_RETURN Return
 ;
-
-
 
 Expression : Expression T_PLUS Expression
 | Expression T_MINUS Expression %prec T_MINUS
@@ -190,7 +175,7 @@ ArgumentsPrime : ArgumentsPrime T_COMMA Expression
 
 Type : T_INTEGER
 | T_BOOLEAN
-| T_ID
+| ClassName
 ;
 ReturnType : Type
 | T_NONE
