@@ -59,8 +59,9 @@ do {return T_DO;}
 "->" {return T_ARROW;}
 "/*" {BEGIN(COMMENT);}
 <COMMENT>"*/" {BEGIN(INITIAL);}
-<COMMENT>\n {++yylineno;}
+<COMMENT>\n {}
 <COMMENT>. {}
+<COMMENT><<EOF>> {yyerror("Invalid EOF, non-terminating Comment");}
 
 "." {return T_DOT;}
 [A-Za-z][A-Za-z0-9]* {return T_ID;}

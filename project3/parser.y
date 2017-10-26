@@ -60,6 +60,7 @@
 %left T_PLUS T_MINUS
 %left T_MULTIPLICATION T_DIVIDE
 %right T_NOT
+%right UMINUS
 
 %%
 
@@ -70,19 +71,24 @@ Start : Language
       ;
 
 /* WRITME: Write your Bison grammar specification here */
-Language : Class | Class Language
+Language : Class LanguagePrime
 ;
+LanguagePrime : Language
+|%empty
+;
+
 Class : ClassName ClassPrime
 ;
-ClassPrime : T_EXTENDS SuperClassName T_OPEN_BRACE A
-| T_OPEN_BRACE A
+ClassPrime : T_EXTENDS SuperClassName T_OPEN_BRACE A 
+| T_OPEN_BRACE A 
 ;
-A : T_CLOSE_BRACE
+A : T_CLOSE_BRACE /* CLASS CLOSE */
 | Members
 ;
 Members : Type MemberName T_SEMI
 | Type MemberName T_SEMI Members
-| MethodName T_OPEN_PAREN IsMethod
+| MethodName T_OPEN_PAREN IsMethod T_CLOSE_BRACE /* CLASS CLOSE */
+| T_CLOSE_BRACE /* CLASS CLOSE */
 ;
 IsMethod :  T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE Methods
 | Parameters T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE Methods
@@ -90,81 +96,65 @@ IsMethod :  T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE Methods
 Methods : M
 | Body M
 ;
-M : MethodName T_OPEN_PAREN IsMethod
-| T_CLOSE_BRACE
+M : T_CLOSE_BRACE MethodName T_OPEN_PAREN IsMethod
+| T_CLOSE_BRACE 
 ;
 Parameters : Type T_ID 
 | Type T_ID T_COMMA Parameters
 ;
 
 /*because all expressions in Body can return epsilon, all combinations must be recorded*/
-Body : Type T_ID CommaOrSemi
-| T_ID T_EQ_SIGN Assignment
+Body : Type T_ID T_COMMA Comma
+| Type T_ID T_SEMI Body
+| T_ID T_EQ_SIGN Assignment  /*{std::cout<<"hi";}*/
 | T_ID T_DOT T_ID T_EQ_SIGN Assignment
 | T_IF If_Else
 | T_WHILE While_Loop
 | T_DO Do_While
 | T_PRINT Print
-| Expression State_Def
 | T_RETURN Return
-| T_CLOSE_BRACE
+|%empty /*{std::cout<<"EMPTY";}*/
 ;
-CommaOrSemi : T_SEMI Body
-| T_COMMA T_ID CommaOrSemi
-;
-
-
-/*
-Body : Decs Statements Return
-| Decs Statements
-| Decs Return
-| Decs
-| Statements Return
-| Statements
-| Return
-;
-Decs : Dec_Def Decs
-| Dec_Def
-;
-Dec_Def : Type T_ID Dec_DefPrime
-;
-Dec_DefPrime : T_SEMI
-| T_COMMA Dec_DefPrimePrime
-;
-Dec_DefPrimePrime : T_ID Dec_DefPrime
+Comma : T_ID T_SEMI Body /*{std::cout<<"T_ID T_SEMI Body"<<std::endl;}*/
+| T_ID T_COMMA Comma /*{std::cout<<"T_ID T_COMMA Comma"<<std::endl;}*/
 ;
 
-
-Statements : State_Def Statements
-| State_Def
+Return : Expression T_SEMI
 ;
-*/
-Return : T_RETURN Expression T_SEMI
-;
-State_Def : T_ID Assignment
-| T_ID T_DOT T_ID Assignment
+State_Def : T_ID T_EQ_SIGN Assignment
+| T_ID T_DOT T_ID T_EQ_SIGN Assignment
 | T_IF If_Else
 | T_WHILE While_Loop
 | T_DO Do_While
 | T_PRINT Print
-| Expression State_Def
 | T_RETURN Return
-| T_CLOSE_BRACE
+|%empty
 ;
 Assignment : Expression T_SEMI State_Def
 ;
 
-If_Else : Expression T_OPEN_BRACE State_Def T_CLOSE_BRACE
-| Expression T_OPEN_BRACE State_Def T_CLOSE_BRACE T_ELSE Else
+If_Else : Expression T_OPEN_BRACE Block T_CLOSE_BRACE State_Def
+| Expression T_OPEN_BRACE Block T_CLOSE_BRACE T_ELSE Else
 ;
-Else : T_OPEN_BRACE State_Def T_CLOSE_BRACE State_Def
+Else : T_OPEN_BRACE Block T_CLOSE_BRACE State_Def
 ;
-While_Loop : Expression T_OPEN_BRACE State_Def T_CLOSE_BRACE State_Def
+While_Loop : Expression T_OPEN_BRACE Block T_CLOSE_BRACE State_Def
 ;
-Do_While : T_OPEN_BRACE State_Def T_CLOSE_BRACE T_WHILE T_OPEN_PAREN Expression T_CLOSE_PAREN T_SEMI State_Def
+Do_While : T_OPEN_BRACE Block T_CLOSE_BRACE T_WHILE T_OPEN_PAREN Expression T_CLOSE_PAREN T_SEMI State_Def
 ;
 Print : Expression T_SEMI State_Def
 ;
+
+Block : T_ID T_EQ_SIGN Assignment
+| T_ID T_DOT T_ID T_EQ_SIGN Assignment
+| T_IF If_Else
+| T_WHILE While_Loop
+| T_DO Do_While
+| T_PRINT Print
+| T_RETURN Return
+;
+
+
 
 Expression : Expression T_PLUS Expression
 | Expression T_MINUS Expression %prec T_MINUS
@@ -176,13 +166,13 @@ Expression : Expression T_PLUS Expression
 | Expression T_AND Expression %prec T_AND
 | Expression T_OR Expression %prec T_OR
 | T_NOT Expression %prec T_NOT
-| T_MINUS Expression %prec T_NOT
-| T_ID
+| T_MINUS Expression %prec UMINUS
+| T_ID /*{std::cout<<"using ID in exp"<<std::endl;}*/
 | T_ID T_DOT T_ID
 | T_ID T_OPEN_PAREN MethodCall
 | T_ID T_DOT T_ID T_OPEN_PAREN MethodCall
 | T_OPEN_PAREN Expression T_CLOSE_PAREN
-| T_INTEGER T_LITERAL
+| T_LITERAL
 | T_TRUE
 | T_FALSE
 | T_NEW ClassName
@@ -191,15 +181,16 @@ Expression : Expression T_PLUS Expression
 MethodCall : T_CLOSE_PAREN
 | Arguments T_CLOSE_PAREN
 ;
-Arguments  : Expression ArgumentsPrime
-;
-ArgumentsPrime : T_COMMA ArgumentsPrime
+Arguments : ArgumentsPrime
 |%empty
+;
+ArgumentsPrime : ArgumentsPrime T_COMMA Expression
+| Expression
 ;
 
 Type : T_INTEGER
 | T_BOOLEAN
-| ClassName
+| T_ID
 ;
 ReturnType : Type
 | T_NONE
