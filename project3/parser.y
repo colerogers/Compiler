@@ -85,8 +85,12 @@ Members : Type MemberName T_SEMI Members
 | MethodName T_OPEN_PAREN IsMethod T_CLOSE_BRACE /* CLASS CLOSE */
 | T_CLOSE_BRACE /* CLASS CLOSE */
 ;
-IsMethod :  T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE Methods
-| Parameters T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE Methods
+IsMethod : Parameters T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE Body T_CLOSE_BRACE MoreMethods
+;
+MoreMethods: MethodName T_OPEN_PAREN Parameters T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE Body T_CLOSE_BRACE MoreMethods
+|%empty
+/*
+IsMethod : Parameters T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE Methods
 ;
 Methods : M
 | Body M
@@ -94,8 +98,10 @@ Methods : M
 M : T_CLOSE_BRACE MethodName T_OPEN_PAREN IsMethod
 | T_CLOSE_BRACE 
 ;
+*/
 Parameters : Type T_ID 
 | Type T_ID T_COMMA Parameters
+|%empty
 ;
 
 /*because all expressions in Body can return epsilon, all combinations must be recorded*/
