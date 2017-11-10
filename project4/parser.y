@@ -70,7 +70,7 @@
 %type <declaration_ptr> Members
 %type <methodbody_ptr> IsMethod*/
 %type <returnstatement_ptr> Return
-%type 
+
 
 %type <expression_ptr> Expression MethodCall
 %type <expression_list_ptr> Arguments ArgumentsPrime
@@ -89,73 +89,76 @@ Language : Class LanguagePrime
 LanguagePrime : Language
 |%empty
 ;
-Class : ClassName ClassPrime
+
+Class : ClassName T_EXTENDS SuperClassName T_OPEN_BRACE ClassBody T_CLOSE_BRACE
+| ClassName T_OPEN_BRACE ClassBody T_CLOSE_BRACE
 ;
-ClassPrime : T_EXTENDS SuperClassName T_OPEN_BRACE Members 
-| T_OPEN_BRACE Members
-;
-Members : Type MemberName T_SEMI Members
-| MethodName T_OPEN_PAREN IsMethod T_CLOSE_BRACE /* CLASS CLOSE */
-| T_CLOSE_BRACE /* CLASS CLOSE */
-;
-IsMethod : Parameters T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE Body T_CLOSE_BRACE MoreMethods
-;
-MoreMethods: MethodName T_OPEN_PAREN Parameters T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE Body T_CLOSE_BRACE MoreMethods
+ClassBody : Members Methods
+| Members
+| Methods
 |%empty
 ;
-Parameters : Type T_ID 
-| Type T_ID T_COMMA Parameters
+Members : Members Type MemberName T_SEMI
+| Type MemberName T_SEMI
+;
+Methods : Methods MethodDeclaration
+| MethodDeclaration
+;
+MethodDeclaration : MethodName T_OPEN_PAREN Parameters T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE Body T_CLOSE_BRACE
+| MethodName T_OPEN_PAREN T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE Body T_CLOSE_BRACE
+;
+Parameters : Parameters T_COMMA Type T_ID
+| Type T_ID
+;
+
+Body : Declarations Statements Return
+| Declarations Return
+| Statements Return
+| Declarations Statements
+| Declarations
+| Statements
+| Return
 |%empty
 ;
 
-/*because all expressions in Body can return epsilon, all combinations must be recorded*/
-Body : Type T_ID T_COMMA Comma
-| Type T_ID T_SEMI Body
-| T_ID T_EQ_SIGN Assignment  /*{std::cout<<"hi";}*/
-| T_ID T_DOT T_ID T_EQ_SIGN Assignment
-| T_IF If_Else
-| T_WHILE While_Loop
-| T_DO Do_While
-| T_PRINT Print
-| T_RETURN Return
-|%empty /*{std::cout<<"EMPTY";}*/
+Declarations : Declarations Type Dec T_SEMI
+| Type Dec T_SEMI
 ;
-Comma : T_ID T_SEMI Body /*{std::cout<<"T_ID T_SEMI Body"<<std::endl;}*/
-| T_ID T_COMMA Comma /*{std::cout<<"T_ID T_COMMA Comma"<<std::endl;}*/
+Dec : Dec T_COMMA T_ID
+| T_ID
 ;
 
-Return : Expression T_SEMI                                    { $$ = new ReturnStatementNode($1); }
+Statements : Statements State_Def
+| State_Def
 ;
-State_Def : T_ID T_EQ_SIGN Assignment                         { $$ = new AssignmentNode($1, NULL, $3); }
-| T_ID T_DOT T_ID T_EQ_SIGN Assignment                        { $$ = new AssignmentNode($1, $3, $5); }
-| T_IF If_Else                                                { $$ = $2; }
-| T_WHILE While_Loop                                          { $$ = $2; }
-| T_DO Do_While                                               { $$ = $2; }
-| T_PRINT Print                                               { $$ = $2; }
-| T_RETURN Return                                             { $$ = $2; }
-|%empty                                                       { $$ = NULL; }
+State_Def : Assignment
+| MethodCall T_SEMI
+| If_Else
+| While_Loop
+| Do_While
+| Print
 ;
-Assignment : Expression T_SEMI State_Def                      { $$ = $1; }
+
+Return : T_RETURN Expression T_SEMI
 ;
-If_Else : Expression T_OPEN_BRACE Block T_CLOSE_BRACE State_Def { $$ = new IfElseNode($1, $3, NULL); }
-| Expression T_OPEN_BRACE Block T_CLOSE_BRACE T_ELSE Else     { $$ = new IfElseNode($1, $3, $6); }
+
+Assignment : T_ID T_EQ_SIGN Expression T_SEMI
+| T_ID T_DOT T_ID T_EQ_SIGN Expression T_SEMI
 ;
-Else : T_OPEN_BRACE Block T_CLOSE_BRACE State_Def             { $$ = $2; }
+If_Else : T_IF Expression T_OPEN_BRACE Statements T_CLOSE_BRACE Else
 ;
-While_Loop : Expression T_OPEN_BRACE Block T_CLOSE_BRACE State_Def { $$ = new WhileNode($1, $3); }
+Else : T_ELSE T_OPEN_BRACE Statements T_CLOSE_BRACE
+|%empty
 ;
-Do_While : T_OPEN_BRACE Block T_CLOSE_BRACE T_WHILE T_OPEN_PAREN Expression T_CLOSE_PAREN T_SEMI State_Def { $$ = new DoWhileNode($2, $6); }
+While_Loop : T_WHILE Expression T_OPEN_BRACE Statements T_CLOSE_BRACE
 ;
-Print : Expression T_SEMI State_Def                            { $$ = new PrintNode($1); }
+Do_While : T_DO T_OPEN_BRACE Statements T_CLOSE_BRACE T_WHILE T_OPEN_PAREN Expression T_CLOSE_PAREN T_SEMI
 ;
-Block : T_ID T_EQ_SIGN Assignment                              { $$ = new AssignmentNode($1, NULL, $3); }
-| T_ID T_DOT T_ID T_EQ_SIGN Assignment                         { $$ = new AssignmentNode($1, $3, $5); }
-| T_IF If_Else                                                 { $$ = $2; }
-| T_WHILE While_Loop                                           { $$ = $2; }
-| T_DO Do_While                                                { $$ = $2; }
-| T_PRINT Print                                                { $$ = $2; }
-| T_RETURN Return                                              { $$ = $2; }
+Print : T_PRINT Expression T_SEMI
 ;
+
+
+
 
 Expression : Expression T_PLUS Expression                      { $$ = new PlusNode($1, $3); }
 | Expression T_MINUS Expression %prec T_MINUS                  { $$ = new MinusNode($1, $3); }

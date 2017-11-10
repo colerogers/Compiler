@@ -99,9 +99,11 @@ Parameters : Parameters T_COMMA Type T_ID
 Body : Declarations Statements Return
 | Declarations Return
 | Statements Return
+| Declarations Statements
 | Declarations
 | Statements
 | Return
+|%empty
 ;
 
 Declarations : Declarations Type Dec T_SEMI
