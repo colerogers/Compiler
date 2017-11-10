@@ -71,8 +71,8 @@
 %type <methodbody_ptr> IsMethod*/
 
 %type <methodbody_ptr> Body
-%type <declaration_list_pt> Declarations
-%type <declaration_ptr> Dec
+%type <declaration_list_ptr> Declarations
+%type <identifier_list_ptr> Dec
 %type <statement_list_ptr> Statements
 %type <statement_ptr> State_Def
 %type <assignment_ptr> Assignment
@@ -83,7 +83,8 @@
 %type <print_ptr> Print
 %type <returnstatement_ptr> Return
 
-%type <expression_ptr> Expression MethodCall
+%type <expression_ptr> Expression
+%type <methodcall_ptr> MethodCall
 %type <expression_list_ptr> Arguments ArgumentsPrime
 %type <type_ptr> Type ReturnType 
 %type <identifier_ptr> ClassName SuperClassName MethodName MemberName
