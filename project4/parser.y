@@ -69,8 +69,19 @@
 %type <class_list_ptr> Language
 %type <declaration_ptr> Members
 %type <methodbody_ptr> IsMethod*/
-%type <returnstatement_ptr> Return
 
+%type <methodbody_ptr> Body
+%type <declaration_list_pt> Declarations
+%type <declaration_ptr> Dec
+%type <statement_list_ptr> Statements
+%type <statement_ptr> State_Def
+%type <assignment_ptr> Assignment
+%type <ifelse_ptr> If_Else
+%type <statement_list_ptr> Else
+%type <while_ptr> While_Loop
+%type <dowhile_ptr> Do_While
+%type <print_ptr> Print
+%type <returnstatement_ptr> Return
 
 %type <expression_ptr> Expression MethodCall
 %type <expression_list_ptr> Arguments ArgumentsPrime
@@ -111,50 +122,50 @@ Parameters : Parameters T_COMMA Type T_ID
 | Type T_ID
 ;
 
-Body : Declarations Statements Return
-| Declarations Return
-| Statements Return
-| Declarations Statements
-| Declarations
-| Statements
-| Return
-|%empty
+Body : Declarations Statements Return    { $$ = new MethodBodyNode($1, $2, $3); }
+| Declarations Return                    { $$ = new MethodBodyNode($1, NULL, $2); }
+| Statements Return                      { $$ = new MethodBodyNode(NULL, $1, $2); }
+| Declarations Statements                { $$ = new MethodBodyNode($1, $2, NULL); }
+| Declarations                           { $$ = new MethodBodyNode($1, NULL, NULL); }
+| Statements                             { $$ = new MethodBodyNode(NULL, $1, NULL); }
+| Return                                 { $$ = new MethodBodyNode(NULL, NULL, $1); }
+|%empty                                  { $$ = new MethodBodyNode(NULL, NULL, NULL); }
 ;
 
-Declarations : Declarations Type Dec T_SEMI
-| Type Dec T_SEMI
+Declarations : Declarations Type Dec T_SEMI  { $$ = $1; $$->push_back(new DeclarationNode($2, $3)); }
+| Type Dec T_SEMI                            { $$ = new std::list<DeclarationNode*>(); $$->push_back(new DeclarationNode($1, $2)); }
 ;
-Dec : Dec T_COMMA T_ID
-| T_ID
-;
-
-Statements : Statements State_Def
-| State_Def
-;
-State_Def : Assignment
-| MethodCall T_SEMI
-| If_Else
-| While_Loop
-| Do_While
-| Print
+Dec : Dec T_COMMA T_ID                       { $$ = $1; $$->push_back($3); }
+| T_ID                                       { $$ = new std::list<IdentifierNode*>(); $$->push_back($1); }
 ;
 
-Return : T_RETURN Expression T_SEMI
+Statements : Statements State_Def            { $$ = $1; $$->push_back($2); }
+| State_Def                                  { $$ = new std::list<StatementNode*>(); $$->push_back($1); }
+;
+State_Def : Assignment                       { $$ = $1; }
+| MethodCall T_SEMI                          { $$ = new CallNode($1); }
+| If_Else                                    { $$ = $1; }
+| While_Loop                                 { $$ = $1; }
+| Do_While                                   { $$ = $1; }
+| Print                                      { $$ = $1; }
 ;
 
-Assignment : T_ID T_EQ_SIGN Expression T_SEMI
-| T_ID T_DOT T_ID T_EQ_SIGN Expression T_SEMI
+Return : T_RETURN Expression T_SEMI          { $$ = new ReturnStatementNode($2); }
 ;
-If_Else : T_IF Expression T_OPEN_BRACE Statements T_CLOSE_BRACE Else
+
+Assignment : T_ID T_EQ_SIGN Expression T_SEMI                          { $$ = new AssignmentNode($1, NULL, $3); }
+| T_ID T_DOT T_ID T_EQ_SIGN Expression T_SEMI                          { $$ = new AssignmentNode($1, $3, $5); }
 ;
-Else : T_ELSE T_OPEN_BRACE Statements T_CLOSE_BRACE
-|%empty
+If_Else : T_IF Expression T_OPEN_BRACE Statements T_CLOSE_BRACE Else   { $$ = new IfElseNode($2, $4, $6); }
 ;
-While_Loop : T_WHILE Expression T_OPEN_BRACE Statements T_CLOSE_BRACE
+Else : T_ELSE T_OPEN_BRACE Statements T_CLOSE_BRACE                    { $$ = $3; }
+|%empty                                                                { $$ = NULL; }
 ;
-Do_While : T_DO T_OPEN_BRACE Statements T_CLOSE_BRACE T_WHILE T_OPEN_PAREN Expression T_CLOSE_PAREN T_SEMI
+While_Loop : T_WHILE Expression T_OPEN_BRACE Statements T_CLOSE_BRACE  { $$ = new WhileNode($2, $4); }
 ;
-Print : T_PRINT Expression T_SEMI
+Do_While : T_DO T_OPEN_BRACE Statements T_CLOSE_BRACE T_WHILE T_OPEN_PAREN Expression T_CLOSE_PAREN T_SEMI  { $$ = new DoWhileNode($3, $7); }
+;
+Print : T_PRINT Expression T_SEMI                                      { $$ = new PrintNode($2); }
 ;
 
 
