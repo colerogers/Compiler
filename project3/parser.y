@@ -75,37 +75,100 @@ Language : Class LanguagePrime
 LanguagePrime : Language        
 |%empty                         
 ;
-Class : ClassName T_EXTENDS SuperClassName T_OPEN_BRACE Members
-| ClassName T_OPEN_BRACE Members
+Class : ClassName T_EXTENDS SuperClassName T_OPEN_BRACE ClassBody T_CLOSE_BRACE
+| ClassName T_OPEN_BRACE ClassBody T_CLOSE_BRACE
+;
+ClassBody : Members Methods
+| Members
+| Methods
+|%empty
+;
+Members : Members Type MemberName T_SEMI
+| Type MemberName T_SEMI
+;
+Methods : Methods MethodDeclaration
+| MethodDeclaration
+;
+MethodDeclaration : MethodName T_OPEN_PAREN Parameters T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE Body T_CLOSE_BRACE
+| MethodName T_OPEN_PAREN T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE Body T_CLOSE_BRACE
+;
+Parameters : Parameters T_COMMA Type T_ID
+| Type T_ID
 ;
 
+Body : Declarations Statements Return
+| Declarations Return
+| Statements Return
+| Declarations
+| Statements
+| Return
+;
+
+Declarations : Declarations Type Dec T_SEMI
+| Type Dec T_SEMI
+;
+Dec : Dec T_COMMA T_ID
+| T_ID
+;
+
+Statements : Statements State_Def
+| State_Def
+;
+State_Def : Assignment
+| MethodCall T_SEMI
+| If_Else
+| While_Loop
+| Do_While
+| Print
+;
+
+Return : T_RETURN Expression T_SEMI
+;
+
+Assignment : T_ID T_EQ_SIGN Expression T_SEMI
+| T_ID T_DOT T_ID T_EQ_SIGN Expression T_SEMI
+;
+If_Else : T_IF Expression T_OPEN_BRACE Statements T_CLOSE_BRACE Else
+;
+Else : T_ELSE T_OPEN_BRACE Statements T_CLOSE_BRACE
+|%empty
+;
+While_Loop : T_WHILE Expression T_OPEN_BRACE Statements T_CLOSE_BRACE
+;
+Do_While : T_DO T_OPEN_BRACE Statements T_CLOSE_BRACE T_WHILE T_OPEN_PAREN Expression T_CLOSE_PAREN T_SEMI
+;
+Print : T_PRINT Expression T_SEMI
+;
+
+/*
 Members : Type MemberName T_SEMI Members
-| MethodName T_OPEN_PAREN IsMethod T_CLOSE_BRACE /* CLASS CLOSE */
-| T_CLOSE_BRACE /* CLASS CLOSE */
+| MethodName T_OPEN_PAREN IsMethod T_CLOSE_BRACE 
+| T_CLOSE_BRACE 
 ;
 IsMethod : Parameters T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE Body T_CLOSE_BRACE MoreMethods
 ;
 MoreMethods: MethodName T_OPEN_PAREN Parameters T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE Body T_CLOSE_BRACE MoreMethods
 |%empty
+;
 Parameters : Type T_ID 
 | Type T_ID T_COMMA Parameters
 |%empty
 ;
 
-/*because all expressions in Body can return epsilon, all combinations must be recorded*/
+
 Body : Type T_ID T_COMMA Comma
 | Type T_ID T_SEMI Body
-| T_ID T_EQ_SIGN Assignment  /*{std::cout<<"hi";}*/
+| T_ID T_EQ_SIGN Assignment  
 | T_ID T_DOT T_ID T_EQ_SIGN Assignment
 | T_IF If_Else
 | T_WHILE While_Loop
 | T_DO Do_While
 | T_PRINT Print
 | T_RETURN Return
-|%empty /*{std::cout<<"EMPTY";}*/
+|%empty 
 ;
-Comma : T_ID T_SEMI Body /*{std::cout<<"T_ID T_SEMI Body"<<std::endl;}*/
-| T_ID T_COMMA Comma /*{std::cout<<"T_ID T_COMMA Comma"<<std::endl;}*/
+Comma : T_ID T_SEMI Body 
+| T_ID T_COMMA Comma 
 ;
 
 Return : Expression T_SEMI
@@ -140,6 +203,7 @@ Block : T_ID T_EQ_SIGN Assignment
 | T_PRINT Print
 | T_RETURN Return
 ;
+*/
 
 Expression : Expression T_PLUS Expression
 | Expression T_MINUS Expression %prec T_MINUS
