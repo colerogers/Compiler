@@ -70,16 +70,15 @@ Start : Language
       ;
 
 /* WRITME: Write your Bison grammar specification here */
-Language : Class LanguagePrime
+Language : Class LanguagePrime  
 ;
-LanguagePrime : Language
-|%empty
+LanguagePrime : Language        
+|%empty                         
 ;
-Class : ClassName ClassPrime
+Class : ClassName T_EXTENDS SuperClassName T_OPEN_BRACE Members
+| ClassName T_OPEN_BRACE Members
 ;
-ClassPrime : T_EXTENDS SuperClassName T_OPEN_BRACE Members 
-| T_OPEN_BRACE Members
-;
+
 Members : Type MemberName T_SEMI Members
 | MethodName T_OPEN_PAREN IsMethod T_CLOSE_BRACE /* CLASS CLOSE */
 | T_CLOSE_BRACE /* CLASS CLOSE */
