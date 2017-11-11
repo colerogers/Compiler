@@ -10,6 +10,9 @@
     void yyerror(const char *);
     
     extern ASTNode* astRoot;
+
+    #define YYMAXDEPTH 500
+    #define YYINITDEPTH 500
 %}
 
 %error-verbose
