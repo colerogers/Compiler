@@ -70,6 +70,15 @@
 %type <declaration_ptr> Members
 %type <methodbody_ptr> IsMethod*/
 
+%type <program_ptr> Start
+%type <class_list_ptr> Language
+%type <class_ptr> Class
+%type <class_ptr> ClassBody
+%type <declaration_list_ptr> Members
+%type <method_list_ptr> Methods
+%type <method_ptr> MethodDeclaration
+%type <parameter_list_ptr> Parameters
+
 %type <methodbody_ptr> Body
 %type <declaration_list_ptr> Declarations
 %type <identifier_list_ptr> Dec
@@ -94,16 +103,14 @@
 /* WRITEME: This rule is a placeholder. Replace it with your grammar
             rules from Project 3 */
 
-Start : Language  { /* Empty action */ }
+Start : Language                                { $$ = new ProgramNode($1); }
       ;
-Language : Class LanguagePrime
-;
-LanguagePrime : Language
-|%empty
+Lanuage : Language Class                        { $$ = $1; $$->push_back($2); }
+| Class                                         { $$ = new std::list<ClassNode*>(); $$->push_back($1); }
 ;
 
-Class : ClassName T_EXTENDS SuperClassName T_OPEN_BRACE ClassBody T_CLOSE_BRACE  
-| ClassName T_OPEN_BRACE ClassBody T_CLOSE_BRACE
+Class : ClassName T_EXTENDS SuperClassName T_OPEN_BRACE ClassBody T_CLOSE_BRACE  { $$ = $5; $$->identifier_1 = $1; $$->identifier_2 = $3; }
+| ClassName T_OPEN_BRACE ClassBody T_CLOSE_BRACE                                 { $$ = $3; $$->identifier_1 = $1; }
 ;
 ClassBody : Members Methods                     { $$ = new ClassNode(NULL, NULL, $1, $2); }
 | Members                                       { $$ = new ClassNode(NULL, NULL, $1, NULL); }
