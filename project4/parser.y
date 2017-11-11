@@ -102,25 +102,31 @@ LanguagePrime : Language
 |%empty
 ;
 
-Class : ClassName T_EXTENDS SuperClassName T_OPEN_BRACE ClassBody T_CLOSE_BRACE
+Class : ClassName T_EXTENDS SuperClassName T_OPEN_BRACE ClassBody T_CLOSE_BRACE  
 | ClassName T_OPEN_BRACE ClassBody T_CLOSE_BRACE
 ;
-ClassBody : Members Methods
-| Members
-| Methods
-|%empty
+ClassBody : Members Methods                     { $$ = new ClassNode(NULL, NULL, $1, $2); }
+| Members                                       { $$ = new ClassNode(NULL, NULL, $1, NULL); }
+| Methods                                       { $$ = new ClassNode(NULL, NULL, NULL, $1); }
+|%empty                                         { $$ = new ClassNode(NULL, NULL, NULL, NULL); }
 ;
-Members : Members Type MemberName T_SEMI
-| Type MemberName T_SEMI
+Members : Members Type MemberName T_SEMI        { $$ = $1;
+                                                  std::list<IdentifierNode*> *tmp = new std::list<IdentifierNode*>();
+						  tmp->push_back($3);
+						  $$->push_back(new DeclarationNode($2, tmp)); }
+| Type MemberName T_SEMI                        { $$ = new std::list<DeclarationNode*>();
+                                                  std::list<IdentifierNode*> *tmp = new std::list<IdentifierNode*>();
+						  tmp->push_back($2);
+						  $$->push_back(new DeclarationNode($1, tmp)); }
 ;
-Methods : Methods MethodDeclaration
-| MethodDeclaration
+Methods : Methods MethodDeclaration             { $$ = $1; $$->push_back($2); }
+| MethodDeclaration                             { $$ = new std::list<MethodNode*>(); $$->push_back($1); }
 ;
-MethodDeclaration : MethodName T_OPEN_PAREN Parameters T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE Body T_CLOSE_BRACE
-| MethodName T_OPEN_PAREN T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE Body T_CLOSE_BRACE
+MethodDeclaration : MethodName T_OPEN_PAREN Parameters T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE Body T_CLOSE_BRACE  { $$ = new MethodNode($1, $3, $6, $8); }
+| MethodName T_OPEN_PAREN T_CLOSE_PAREN T_ARROW ReturnType T_OPEN_BRACE Body T_CLOSE_BRACE  { $$ = new MethodNode($1, NULL, $5, $7); }
 ;
-Parameters : Parameters T_COMMA Type T_ID
-| Type T_ID
+Parameters : Parameters T_COMMA Type T_ID       { $$ = $1; $$->push_back(new ParameterNode($3, $4)); }
+| Type T_ID                                     { $$ = new std::list<ParameterNode*>(); $$->push_back(new ParameterNode($1, $2)); }
 ;
 
 Body : Declarations Statements Return    { $$ = new MethodBodyNode($1, $2, $3); }
