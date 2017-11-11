@@ -103,9 +103,9 @@
 /* WRITEME: This rule is a placeholder. Replace it with your grammar
             rules from Project 3 */
 
-Start : Language                                { $$ = new ProgramNode($1); }
+Start : Language                                { $$ = new ProgramNode($1); astRoot = $$; }
       ;
-Lanuage : Language Class                        { $$ = $1; $$->push_back($2); }
+Language : Language Class                        { $$ = $1; $$->push_back($2); }
 | Class                                         { $$ = new std::list<ClassNode*>(); $$->push_back($1); }
 ;
 

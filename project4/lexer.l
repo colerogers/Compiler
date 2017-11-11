@@ -62,11 +62,11 @@ not {return T_NOT;}
 
 return {return T_RETURN;}
 ":" {return T_COLON;}
-true {return T_TRUE;}
-false {return T_FALSE;}
+true {yylval.integer_ptr = new IntegerNode(1); return T_TRUE;}
+false {yylval.integer_ptr = new IntegerNode(0); return T_FALSE;}
 
-[A-Za-z][A-Za-z0-9]* {return T_ID;}
-[0]|[1-9][0-9]* {return T_LITERAL;}
+[A-Za-z][A-Za-z0-9]* {yylval.identifier_ptr = new IdentifierNode(yytext); return T_ID;}
+[0]|[1-9][0-9]* {yylval.integer_ptr = new IntegerNode(atoi(yytext)); return T_LITERAL;}
 [ \t\n]+ ;
 
 .                 { yyerror("invalid character"); }
