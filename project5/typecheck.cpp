@@ -68,18 +68,51 @@ void typeError(TypeErrorCode code) {
 
 void TypeCheck::visitProgramNode(ProgramNode* node) {
   // WRITEME: Replace with code if necessary
+  // create class table
+  classTable = new ClassTable();
+  node->visit_children(this);
 }
 
 void TypeCheck::visitClassNode(ClassNode* node) {
-  // WRITEME: Replace with code if necessary
+  currentMethodTable = NULL;
+  currentVariableTable = NULL;
+  currentMemberOffset = 0;
+
+  currentClassName = node->identifier_1;
+  ClassInfo ci = new ClassInfo;
+  ci.methods = new MethodTable();
+  ci.members = new VariableTable();
+
+  // add superclass later
+
+  classTable.insert(currentClassName, ci);
+
+  node->visit_children(this);
+
+  // add method size later
 }
 
 void TypeCheck::visitMethodNode(MethodNode* node) {
-  // WRITEME: Replace with code if necessary
+  currentLocalOffset = -4;
+  currentParameterOffset = 12;
+
+  currentMethodTable = classTable->at(currentClassName).methods;
+  MethodInfo mi = new MethodInfo();
+  // add stuff
+  
+  currentVariableTable = classTable->(currentClassName).members;
+  VariableInfo vi = new VariableInfo();
+  // add stuff
+
+  // check for null param's
+
+  // check if constructor returns None
+
+  // update size
 }
 
 void TypeCheck::visitMethodBodyNode(MethodBodyNode* node) {
-  // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void TypeCheck::visitParameterNode(ParameterNode* node) {
@@ -92,78 +125,97 @@ void TypeCheck::visitDeclarationNode(DeclarationNode* node) {
 
 void TypeCheck::visitReturnStatementNode(ReturnStatementNode* node) {
   // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void TypeCheck::visitAssignmentNode(AssignmentNode* node) {
   // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void TypeCheck::visitCallNode(CallNode* node) {
   // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void TypeCheck::visitIfElseNode(IfElseNode* node) {
   // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void TypeCheck::visitWhileNode(WhileNode* node) {
   // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void TypeCheck::visitDoWhileNode(DoWhileNode* node) {
   // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void TypeCheck::visitPrintNode(PrintNode* node) {
   // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void TypeCheck::visitPlusNode(PlusNode* node) {
   // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void TypeCheck::visitMinusNode(MinusNode* node) {
   // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void TypeCheck::visitTimesNode(TimesNode* node) {
   // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void TypeCheck::visitDivideNode(DivideNode* node) {
   // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void TypeCheck::visitGreaterNode(GreaterNode* node) {
   // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void TypeCheck::visitGreaterEqualNode(GreaterEqualNode* node) {
   // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void TypeCheck::visitEqualNode(EqualNode* node) {
   // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void TypeCheck::visitAndNode(AndNode* node) {
   // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void TypeCheck::visitOrNode(OrNode* node) {
   // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void TypeCheck::visitNotNode(NotNode* node) {
   // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void TypeCheck::visitNegationNode(NegationNode* node) {
   // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void TypeCheck::visitMethodCallNode(MethodCallNode* node) {
   // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void TypeCheck::visitMemberAccessNode(MemberAccessNode* node) {
@@ -175,39 +227,40 @@ void TypeCheck::visitVariableNode(VariableNode* node) {
 }
 
 void TypeCheck::visitIntegerLiteralNode(IntegerLiteralNode* node) {
-  // WRITEME: Replace with code if necessary
+
 }
 
 void TypeCheck::visitBooleanLiteralNode(BooleanLiteralNode* node) {
-  // WRITEME: Replace with code if necessary
+
 }
 
 void TypeCheck::visitNewNode(NewNode* node) {
   // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void TypeCheck::visitIntegerTypeNode(IntegerTypeNode* node) {
-  // WRITEME: Replace with code if necessary
+
 }
 
 void TypeCheck::visitBooleanTypeNode(BooleanTypeNode* node) {
-  // WRITEME: Replace with code if necessary
+
 }
 
 void TypeCheck::visitObjectTypeNode(ObjectTypeNode* node) {
-  // WRITEME: Replace with code if necessary
+
 }
 
 void TypeCheck::visitNoneNode(NoneNode* node) {
-  // WRITEME: Replace with code if necessary
+
 }
 
 void TypeCheck::visitIdentifierNode(IdentifierNode* node) {
-  // WRITEME: Replace with code if necessary
+
 }
 
 void TypeCheck::visitIntegerNode(IntegerNode* node) {
-  // WRITEME: Replace with code if necessary
+
 }
 
 
