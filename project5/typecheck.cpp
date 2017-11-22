@@ -67,154 +67,324 @@ void typeError(TypeErrorCode code) {
 // Not all functions must have code, many may be left empty.
 
 void TypeCheck::visitProgramNode(ProgramNode* node) {
-  // WRITEME: Replace with code if necessary
-  // create class table
+  /*
+    list<ClassNode*>* class_list
+   */
+  // create class table, 1 class table per program
   classTable = new ClassTable();
+  // visit every children of this node to build the symbol table
   node->visit_children(this);
 }
 
 void TypeCheck::visitClassNode(ClassNode* node) {
+  /*
+    id_1=name
+    id_2=superClassName
+    list<DeclarationNode*>* declaration_list
+    list<MethodNode*>* method_list
+   */
+  // clear all previously used references
   currentMethodTable = NULL;
   currentVariableTable = NULL;
+  // this member will have the correct offset
   currentMemberOffset = 0;
 
-  currentClassName = node->identifier_1;
-  ClassInfo ci = new ClassInfo;
+  currentClassName = node->identifier_1; // set the class name
+  ClassInfo ci = new ClassInfo; 
   ci.methods = new MethodTable();
   ci.members = new VariableTable();
 
   // add superclass later
 
+  currentVariableTable = &ci.members;
   classTable.insert(currentClassName, ci);
 
   node->visit_children(this);
 
   // add method size later
+  (*classTable)[currentClassName].memberSize = 0;
+  
 }
 
 void TypeCheck::visitMethodNode(MethodNode* node) {
+  /*
+    identifier=name
+    parameter_list
+    type=return type
+    methodbody
+   */
   currentLocalOffset = -4;
   currentParameterOffset = 12;
 
   currentMethodTable = classTable->at(currentClassName).methods;
   MethodInfo mi = new MethodInfo();
-  // add stuff
+  mi.returnType = node->type; // need to switch from basetype to compound type
+  // add parameters from list<ParameterNode*> to list<CompoundType> 
+  currentMethodTable.insert(node->identifier->name, mi);
   
-  currentVariableTable = classTable->(currentClassName).members;
-  VariableInfo vi = new VariableInfo();
-  // add stuff
+  currentVariableTable = new VariableTable();
+  (*currentMethodTable)[node->identifier->name]->variables = currentVariableTable;
 
+  node->visit_children(this);
+  
   // check for null param's
+  if (node->parameter_list != NULL){
+    // we have param's
+    std::list<CompoundType> p = new list<CompoundType>();
+    for (std::iterator<ParameterNode*> *i=node->parameter_list.begin(); i!=node->parameter_list.end(); i++){
+      p->push_back(ConvetToCompoundType((*i)->type->basetype, (*i)->identifier->name));
+    }
+    (*currentMethodTable)[node->identifier->name].parameters = &p;
+  }
 
   // check if constructor returns None
 
   // update size
+  (*currentMethodTable)[node->identifier->name].localsSize = 0;
+  (*currentVariableTable)
 }
 
 void TypeCheck::visitMethodBodyNode(MethodBodyNode* node) {
+  /*
+    declaration_list
+    statement_list
+    returnstatement
+   */
   node->visit_children(this);
+
+  // check if return type is same as when method was defined
+  // throw error if not
 }
 
 void TypeCheck::visitParameterNode(ParameterNode* node) {
-  // WRITEME: Replace with code if necessary
+  /*
+    type
+    identifier
+   */
+  // check if param is a class, integer, or boolean
+  if (node->type == IntegerTypeNode) node->basetype = bt_integer;
+  else if (node->type == BooleanTypeNode) node->basetype=bt_boolean;
+  else node->basetype=bt_object;
+    
+  VariableInfo vi;
+  vi.type = ConvetToCompoundType(node->basetype, node->identifier->name);
+  vi.offset = currentParameterOffset;
+  currentParameterOffset += 4;
+  vi.size = 4;
+  (*currentVariableTable).insert(node->identifier->name, vi);
+  // throw error if not
 }
 
 void TypeCheck::visitDeclarationNode(DeclarationNode* node) {
-  // WRITEME: Replace with code if necessary
+  /*
+    type
+    identifier_list
+   */
+  if (node->type == IntegerTypeNode) node->basetype = bt_integer;
+  else if (node->type == BooleanTypeNode) node->basetype=bt_boolean;
+  else node->basetype=bt_object;
+  //  if (IsAClass() || node->type==IntegerType || node->type==BooleanType){
+    
+    for (std::iterator<IdentifierNode*> i = node->identifier_list.begin();
+	 i != node->identifier_list.end();
+	 i++ ){
+      
+      VariableInfo vi;
+      vi.type = ConvetToCompoundType(node->basetype, i->name);
+      vi.offset = currentLocalOffset;
+      currentLocalOffset -= 4;
+      vi.size = 4;
+      (*currentVariableTable).insert(i->name, vi);
+    }
+    //  }else {
+    // throw exception
+    //  }
+  
 }
 
 void TypeCheck::visitReturnStatementNode(ReturnStatementNode* node) {
-  // WRITEME: Replace with code if necessary
+  /*
+    expression
+   */
   node->visit_children(this);
+  // set expression type??
 }
 
 void TypeCheck::visitAssignmentNode(AssignmentNode* node) {
-  // WRITEME: Replace with code if necessary
+  /*
+    identifier_1
+    identifier_2
+    expression
+   */
   node->visit_children(this);
+  
+  if (node->identifier_2 != NULL){
+    // a.b = (expr)
+    // check if type of a.b is equal to type of expr
+    // check if a is vaild class or int or bool
+    // check if b is valid subclass of a
+    if (IsAClass(node->identifier_1) && IsASubClassOf(node->identifier_1, node->identifier_2)){
+      if (node->identifier_2->basetype != node->expression->basetype)
+	// throw error
+	typeError(errorCode);
+    }else{
+      // var not defined
+      // throw error
+      typeError(undefined_variable);
+    } 
+  }else {
+    // a = (expr)
+    // check if type of a is equal to type of expr
+    // check if a is vaild class or int or bool
+    if (IsAClass(node->identifier)){
+      if (node->identifier_1->basetype != node->expression->basetype)
+	typeError(errorCode);
+    }else
+      typeError(undefined_variable);
+  }
 }
 
 void TypeCheck::visitCallNode(CallNode* node) {
-  // WRITEME: Replace with code if necessary
+  /*
+    methodcall
+  */
+  
   node->visit_children(this);
 }
 
 void TypeCheck::visitIfElseNode(IfElseNode* node) {
-  // WRITEME: Replace with code if necessary
+  /*
+    expression
+    statement_list_1
+    statement_list_2
+   */
   node->visit_children(this);
 }
 
 void TypeCheck::visitWhileNode(WhileNode* node) {
-  // WRITEME: Replace with code if necessary
+  /*
+    expression
+    statement_list
+   */
   node->visit_children(this);
 }
 
 void TypeCheck::visitDoWhileNode(DoWhileNode* node) {
-  // WRITEME: Replace with code if necessary
+  /*
+    statement_list
+    expression
+   */
   node->visit_children(this);
 }
 
 void TypeCheck::visitPrintNode(PrintNode* node) {
-  // WRITEME: Replace with code if necessary
+  /*
+    expression
+   */
   node->visit_children(this);
 }
 
 void TypeCheck::visitPlusNode(PlusNode* node) {
-  // WRITEME: Replace with code if necessary
+  /*
+    expression_1
+    expression_2
+   */
   node->visit_children(this);
 }
 
 void TypeCheck::visitMinusNode(MinusNode* node) {
-  // WRITEME: Replace with code if necessary
+  /*
+    expression_1
+    expression_2
+   */
   node->visit_children(this);
 }
 
 void TypeCheck::visitTimesNode(TimesNode* node) {
-  // WRITEME: Replace with code if necessary
+  /*
+    expression_1
+    expression_2
+   */
   node->visit_children(this);
 }
 
 void TypeCheck::visitDivideNode(DivideNode* node) {
   // WRITEME: Replace with code if necessary
+  /*
+    expression_1
+    expression_2
+   */
   node->visit_children(this);
 }
 
 void TypeCheck::visitGreaterNode(GreaterNode* node) {
   // WRITEME: Replace with code if necessary
+  /*
+    expression_1
+    expression_2
+   */
   node->visit_children(this);
 }
 
 void TypeCheck::visitGreaterEqualNode(GreaterEqualNode* node) {
   // WRITEME: Replace with code if necessary
+  /*
+    expression_1
+    expression_2
+   */
   node->visit_children(this);
 }
 
 void TypeCheck::visitEqualNode(EqualNode* node) {
   // WRITEME: Replace with code if necessary
+  /*
+    expression_1
+    expression_2
+   */
   node->visit_children(this);
 }
 
 void TypeCheck::visitAndNode(AndNode* node) {
   // WRITEME: Replace with code if necessary
+  /*
+    expression_1
+    expression_2
+   */
   node->visit_children(this);
 }
 
 void TypeCheck::visitOrNode(OrNode* node) {
   // WRITEME: Replace with code if necessary
+  /*
+    expression_1
+    expression_2
+   */
   node->visit_children(this);
 }
 
 void TypeCheck::visitNotNode(NotNode* node) {
   // WRITEME: Replace with code if necessary
+  /*
+    expression
+   */
   node->visit_children(this);
 }
 
 void TypeCheck::visitNegationNode(NegationNode* node) {
   // WRITEME: Replace with code if necessary
+  /*
+    expression
+   */
   node->visit_children(this);
 }
 
 void TypeCheck::visitMethodCallNode(MethodCallNode* node) {
   // WRITEME: Replace with code if necessary
+  /*
+    identifier_1
+    identifier_2
+    expression_list
+   */
   node->visit_children(this);
 }
 
@@ -235,7 +405,10 @@ void TypeCheck::visitBooleanLiteralNode(BooleanLiteralNode* node) {
 }
 
 void TypeCheck::visitNewNode(NewNode* node) {
-  // WRITEME: Replace with code if necessary
+  /*
+    identifier
+    expression_list
+   */
   node->visit_children(this);
 }
 
