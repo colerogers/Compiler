@@ -65,32 +65,34 @@ void typeError(TypeErrorCode code) {
 /*
   Added helper methods for cleaner code
 */
-bool IsAClass(std::string className){
+bool IsAClass(std::string className, ClassTable *classTable){
   // checks to see if class exists in classTable
-  if (className == NULL) return false;
-  return (*classTable).count(className);
+  if (className.compare(NULL)) return false;
+  return (classTable)->count(className);
 }
-bool isVar(std::string var){
+bool isVar(std::string var, VariableTable *currentVariableTable){
   // checks the current variableTable for the variable
   return (*currentVariableTable).count(var);
 }
-bool isVarOf(std::string var, std::string className){
+bool isVarOf(std::string var, std::string className, ClassTable *classTable){
   return (*classTable)[className].members->count(var);
 }
-bool isVarOfCurClass(std::string var){
+bool isVarOfCurClass(std::string var, VariableTable *currentVariableTable, ClassTable *classTable){
   // checks currentMethodTable and (*classTable)[currentClassName].members
   return (*currentVariableTable).count(var) || (*classTable)[currentClassName].members->count(var);
 }
-bool isMethod(std::string method){
+bool isMethod(std::string method, MethodTable *currentMethodTable){
   // checks the current class for method
   return (*currentMethodTable).count(method);
 }
-bool isMethodOf(std::string method, std::string className){
+bool isMethodOf(std::string method, std::string className, ClassTable *classTable){
   // checks the class passed in if it contains the method
   return (*classTable)[className].methods->count(method);
 }
 
-
+bool IsASubClassOf(std::string className, std::string superClassName, ClassTable *classTable) {
+  return (*classTable)[className].;
+}
 
 
 
@@ -245,7 +247,7 @@ void TypeCheck::visitDeclarationNode(DeclarationNode* node) {
   else 
     node->objectClassName = NULL;
 
-  if (IsAClass(node->objectClassName) || node->type==bt_integer || node->type==bt_boolean){
+  if (IsAClass(node->objectClassName, classTable) || node->type==bt_integer || node->type==bt_boolean){
     
     for (std::iterator<IdentifierNode*> i = node->identifier_list.begin(); i != node->identifier_list.end(); i++ ){
       VariableInfo vi;
@@ -284,7 +286,7 @@ void TypeCheck::visitAssignmentNode(AssignmentNode* node) {
     // check if type of a.b is equal to type of expr
     // check if a is vaild class or int or bool
     // check if b is valid subclass of a
-    if (IsAClass(node->identifier_1->name) && IsASubClassOf(node->identifier_1, node->identifier_2)){
+    if (IsAClass(node->identifier_1->name, classTable) && IsASubClassOf(node->identifier_1->name, node->identifier_2->name, classTable)){
       if (node->identifier_2->basetype != node->expression->basetype)
 	      // throw error
 	      typeError(errorCode);
@@ -297,7 +299,7 @@ void TypeCheck::visitAssignmentNode(AssignmentNode* node) {
     // a = (expr)
     // check if type of a is equal to type of expr
     // check if a is vaild class or int or bool
-    if (IsAClass(node->identifier_1->name)){
+    if (IsAClass(node->identifier_1->name, classTable)){
       if (node->identifier_1->basetype != node->expression->basetype)
 	      typeError(errorCode);
     }else
@@ -591,8 +593,8 @@ void TypeCheck::visitMemberAccessNode(MemberAccessNode* node) {
     identifier_2
   */
   node->visit_children(this);
-  if (IsAClass(node->identifier->name)){
-    if (!isVarOf(node->identifier_2->name, node->identifier_1->name))
+  if (IsAClass(node->identifier->name, classTable)){
+    if (!isVarOf(node->identifier_2->name, node->identifier_1->name, currentVariableTable))
       typeError(undefined_member);
   }else
     typeError(undefined_class);
@@ -608,7 +610,7 @@ void TypeCheck::visitVariableNode(VariableNode* node) {
     identifier_1
   */
   node->visit_children(this);
-  if (!isVarOfCurClass(node->identifier->name))
+  if (!isVarOfCurClass(node->identifier->name, currentVariableTable, classTable))
     typeError(undefined_variable);
   // set type here?
 }
@@ -628,7 +630,7 @@ void TypeCheck::visitNewNode(NewNode* node) {
    */
   node->visit_children(this);
   
-  if (!IsAClass(node->identifier->name))
+  if (!IsAClass(node->identifier->name, classTable))
     typeError(undefined_class);
   
   MethodTable *mt = (*classTable)[node->identifier->name].methods;
