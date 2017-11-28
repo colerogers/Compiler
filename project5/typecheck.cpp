@@ -210,11 +210,14 @@ void TypeCheck::visitMethodNode(MethodNode* node) {
     (*currentMethodTable)[node->identifier->name].parameters = p;
   }
 
+
   // check if constructor returns None
 
   // update size
   //(*currentMethodTable)[node->identifier->name].localsSize = 0;
   //(*currentVariableTable)[];
+
+  delete p;
 }
 
 void TypeCheck::visitMethodBodyNode(MethodBodyNode* node) {
