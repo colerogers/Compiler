@@ -171,15 +171,22 @@ void TypeCheck::visitMethodNode(MethodNode* node) {
 
   currentMethodTable = classTable->at(currentClassName).methods;
   MethodInfo mi;
-  mi.returnType = node->type; // need to switch from basetype to compound type
+  //mi.returnType = node->type; // need to switch from basetype to compound type
   // add parameters from list<ParameterNode*> to list<CompoundType> 
-  currentMethodTable.insert(node->identifier->name, mi);
+  (*currentMethodTable).insert(std::pair<std::string, MethodInfo>(node->identifier->name, mi));
+  //std::pair<std::string, ClassInfo>(currentClassName, ci)
   
   currentVariableTable = new VariableTable();
-  (*currentMethodTable)[node->identifier->name]->variables = currentVariableTable;
+  (*currentMethodTable)[node->identifier->name].variables = currentVariableTable;
 
   node->visit_children(this);
 
+  CompoundType ct;
+  if(node->type->basetype == bt_object)
+    ct.objectClassName = node->type->objectClassName;
+  ct.baseType = node->type->basetype;
+  (*currentMethodTable)[node->identifier->name].returnType = ct;
+  
   if (node->type->basetype != node->methodbody->basetype){
     typeError(return_type_mismatch);
   }
@@ -187,11 +194,11 @@ void TypeCheck::visitMethodNode(MethodNode* node) {
   // check for null param's
   if (node->parameter_list != NULL){
     // we have param's
-    std::list<CompoundType> p = new list<CompoundType>();
+    std::list<CompoundType> *p = new std::list<CompoundType>();
     for (std::list<ParameterNode*>::iterator i=node->parameter_list->begin(); i != node->parameter_list->end(); i++){
-      p->push_back(ConvetToCompoundType((*i)->type->basetype, (*i)->identifier->name));
+      p->push_back(ConvertToCompoundType((*i)->type->basetype, (*i)->identifier->name));//create method??
     }
-    (*currentMethodTable)[node->identifier->name].parameters = &p;
+    (*currentMethodTable)[node->identifier->name].parameters = p;
   }
 
   // check if constructor returns None
@@ -228,11 +235,17 @@ void TypeCheck::visitParameterNode(ParameterNode* node) {
 
   if (node->basetype == bt_object || node->basetype == bt_integer || node->basetype == bt_boolean){
     VariableInfo vi;
-    vi.type = ConvetToCompoundType(node->basetype, node->identifier->name);
+    //vi.type = ConvertToCompoundType(node->basetype, node->identifier->name);
+    CompoundType ct;
+    if(node->type->basetype == bt_object)
+      ct.objectClassName = node->type->objectClassName;
+    ct.baseType = node->type->basetype;
+    vi.type = ct;
     vi.offset = currentParameterOffset;
     currentParameterOffset += 4;
     vi.size = 4;
-    (*currentVariableTable).insert(node->identifier->name, vi);
+    (*currentVariableTable).insert(std::pair<std::string, VariableInfo>(node->identifier->name, vi));
+    //std::pair<std::string, ClassInfo>(currentClassName, ci)
   }else {
     typeError(undefined_class);
   }
@@ -247,18 +260,23 @@ void TypeCheck::visitDeclarationNode(DeclarationNode* node) {
   node->basetype = node->type->basetype;
   if (node->basetype == bt_object) 
     node->objectClassName = node->type->objectClassName;
-  else 
+  /*else 
     node->objectClassName = NULL;
-
-  if (IsAClass(node->objectClassName, classTable) || node->type==bt_integer || node->type==bt_boolean){
+  */
+  if (IsAClass(node->objectClassName, classTable) || node->type->basetype==bt_integer || node->type->basetype==bt_boolean){
     
-    for (std::iterator<IdentifierNode*> i = node->identifier_list.begin(); i != node->identifier_list.end(); i++ ){
+    for (std::list<IdentifierNode*>::iterator i = node->identifier_list->begin(); i != node->identifier_list->end(); i++ ){
       VariableInfo vi;
-      vi.type = ConvetToCompoundType(node->basetype, i->name);
+      //vi.type = ConvertToCompoundType(node->basetype, (*i)->name);
+      CompoundType ct;
+      if(node->type->basetype == bt_object)
+	ct.objectClassName = node->type->objectClassName;
+      ct.baseType = node->type->basetype;
+      vi.type = ct;
       vi.offset = currentLocalOffset;
       currentLocalOffset -= 4;
       vi.size = 4;
-      (*currentVariableTable).insert(i->name, vi);
+      (*currentVariableTable).insert(std::pair<std::string, VariableInfo>((*i)->name, vi));
     }
 
   }else {
@@ -359,8 +377,8 @@ void TypeCheck::visitPlusNode(PlusNode* node) {
    */
   node->visit_children(this);
 
-  node->expression_1->basetype = node->expression_1->type->basetype;
-  node->expression_2->basetype = node->expression_2->type->basetype;
+  //node->expression_1->basetype = node->expression_1->type->basetype;
+  //node->expression_2->basetype = node->expression_2->type->basetype;
 
   if (node->expression_1->basetype == node->expression_2->basetype){
     if (node->expression_1->basetype != bt_integer || node->expression_2->basetype != bt_integer)
@@ -378,8 +396,8 @@ void TypeCheck::visitMinusNode(MinusNode* node) {
    */
   node->visit_children(this);
 
-  node->expression_1->basetype = node->expression_1->type->basetype;
-  node->expression_2->basetype = node->expression_2->type->basetype;
+  //node->expression_1->basetype = node->expression_1->type->basetype;
+  //node->expression_2->basetype = node->expression_2->type->basetype;
 
   if (node->expression_1->basetype == node->expression_2->basetype){
     if (node->expression_1->basetype != bt_integer || node->expression_2->basetype != bt_integer)
@@ -397,8 +415,8 @@ void TypeCheck::visitTimesNode(TimesNode* node) {
    */
   node->visit_children(this);
 
-  node->expression_1->basetype = node->expression_1->type->basetype;
-  node->expression_2->basetype = node->expression_2->type->basetype;
+  //node->expression_1->basetype = node->expression_1->type->basetype;
+  //node->expression_2->basetype = node->expression_2->type->basetype;
 
   if (node->expression_1->basetype == node->expression_2->basetype){
     if (node->expression_1->basetype != bt_integer || node->expression_2->basetype != bt_integer)
@@ -417,8 +435,8 @@ void TypeCheck::visitDivideNode(DivideNode* node) {
    */
   node->visit_children(this);
 
-  node->expression_1->basetype = node->expression_1->type->basetype;
-  node->expression_2->basetype = node->expression_2->type->basetype;
+  //node->expression_1->basetype = node->expression_1->type->basetype;
+  //node->expression_2->basetype = node->expression_2->type->basetype;
 
   if (node->expression_1->basetype == node->expression_2->basetype){
     if (node->expression_1->basetype != bt_integer || node->expression_2->basetype != bt_integer)
@@ -437,8 +455,8 @@ void TypeCheck::visitGreaterNode(GreaterNode* node) {
    */
   node->visit_children(this);
 
-  node->expression_1->basetype = node->expression_1->type->basetype;
-  node->expression_2->basetype = node->expression_2->type->basetype;
+  //node->expression_1->basetype = node->expression_1->type->basetype;
+  //node->expression_2->basetype = node->expression_2->type->basetype;
 
   if (node->expression_1->basetype == node->expression_2->basetype){
     if (node->expression_1->basetype != bt_integer || node->expression_2->basetype != bt_integer)
@@ -457,8 +475,8 @@ void TypeCheck::visitGreaterEqualNode(GreaterEqualNode* node) {
    */
   node->visit_children(this);
 
-  node->expression_1->basetype = node->expression_1->type->basetype;
-  node->expression_2->basetype = node->expression_2->type->basetype;
+  //node->expression_1->basetype = node->expression_1->type->basetype;
+  //node->expression_2->basetype = node->expression_2->type->basetype;
 
   if (node->expression_1->basetype == node->expression_2->basetype)
     {
@@ -478,8 +496,8 @@ void TypeCheck::visitEqualNode(EqualNode* node) {
    */
   node->visit_children(this);
 
-  node->expression_1->basetype = node->expression_1->type->basetype;
-  node->expression_2->basetype = node->expression_2->type->basetype;
+  //node->expression_1->basetype = node->expression_1->type->basetype;
+  //node->expression_2->basetype = node->expression_2->type->basetype;
 
   BaseType e1=node->expression_1->basetype, e2=node->expression_2->basetype;
   if (e1 != e2)
@@ -498,8 +516,8 @@ void TypeCheck::visitAndNode(AndNode* node) {
    */
   node->visit_children(this);
 
-  node->expression_1->basetype = node->expression_1->type->basetype;
-  node->expression_2->basetype = node->expression_2->type->basetype;
+  //node->expression_1->basetype = node->expression_1->type->basetype;
+  //node->expression_2->basetype = node->expression_2->type->basetype;
 
   BaseType e1=node->expression_1->basetype, e2=node->expression_2->basetype;
   if (e1 != e2)
@@ -518,8 +536,8 @@ void TypeCheck::visitOrNode(OrNode* node) {
    */
   node->visit_children(this);
 
-  node->expression_1->basetype = node->expression_1->type->basetype;
-  node->expression_2->basetype = node->expression_2->type->basetype;
+  //node->expression_1->basetype = node->expression_1->type->basetype;
+  //node->expression_2->basetype = node->expression_2->type->basetype;
 
   BaseType e1=node->expression_1->basetype, e2=node->expression_2->basetype;
   if (e1 != e2)
@@ -537,7 +555,7 @@ void TypeCheck::visitNotNode(NotNode* node) {
    */
   node->visit_children(this);
 
-  node->expression->basetype = node->expression->type->basetype;
+  //node->expression->basetype = node->expression->type->basetype;
   if (node->expression->basetype != bt_boolean)
     typeError(expression_type_mismatch);
   
@@ -551,7 +569,7 @@ void TypeCheck::visitNegationNode(NegationNode* node) {
    */
   node->visit_children(this);
 
-  node->expression->basetype = node->expression->type->basetype;
+  //node->expression->basetype = node->expression->type->basetype;
   if (node->expression->basetype != bt_integer)
     typeError(expression_type_mismatch);
   
