@@ -62,6 +62,54 @@ void typeError(TypeErrorCode code) {
   exit(1);
 }
 
+/*
+  Added helper methods for cleaner code
+*/
+bool IsAClass(std::string className){
+  // checks to see if class exists in classTable
+  if (className == NULL) return false;
+  return (*classTable).count(className);
+}
+bool isVar(std::string var){
+  // checks the current variableTable for the variable
+  return (*currentVariableTable).count(var);
+}
+bool isVarOf(std::string var, std::string className){
+  return (*classTable)[className].members->count(var);
+}
+bool isVarOfCurClass(std::string var){
+  // checks currentMethodTable and (*classTable)[currentClassName].members
+  return (*currentVariableTable).count(var) || (*classTable)[currentClassName].members->count(var);
+}
+bool isMethod(std::string method){
+  // checks the current class for method
+  return (*currentMethodTable).count(method);
+}
+bool isMethodOf(std::string method, std::string className){
+  // checks the class passed in if it contains the method
+  return (*classTable)[className].methods->count(method);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // TypeCheck Visitor Functions: These are the functions you will
 // complete to build the symbol table and type check the program.
 // Not all functions must have code, many may be left empty.
@@ -126,6 +174,10 @@ void TypeCheck::visitMethodNode(MethodNode* node) {
   (*currentMethodTable)[node->identifier->name]->variables = currentVariableTable;
 
   node->visit_children(this);
+
+  if (node->type->basetype != node->methodbody->basetype){
+    typeError(return_type_mismatch);
+  }
   
   // check for null param's
   if (node->parameter_list != NULL){
@@ -152,8 +204,11 @@ void TypeCheck::visitMethodBodyNode(MethodBodyNode* node) {
    */
   node->visit_children(this);
 
-  // check if return type is same as when method was defined
-  // throw error if not
+  if (node->returnstatement == NULL)
+    node->basetype = bt_none;
+  else
+    node->basetype = node->returnstatement->basetype;
+  
 }
 
 void TypeCheck::visitParameterNode(ParameterNode* node) {
@@ -161,18 +216,21 @@ void TypeCheck::visitParameterNode(ParameterNode* node) {
     type
     identifier
    */
-  // check if param is a class, integer, or boolean
-  if (node->type == IntegerTypeNode) node->basetype = bt_integer;
-  else if (node->type == BooleanTypeNode) node->basetype=bt_boolean;
-  else node->basetype=bt_object;
-    
-  VariableInfo vi;
-  vi.type = ConvetToCompoundType(node->basetype, node->identifier->name);
-  vi.offset = currentParameterOffset;
-  currentParameterOffset += 4;
-  vi.size = 4;
-  (*currentVariableTable).insert(node->identifier->name, vi);
-  // throw error if not
+  node->visit_children(this);
+
+  node->basetype = node->type->basetype;
+  if (node->basetype == bt_object) node->objectClassName = node->type->objectClassName;
+
+  if (node->basetype == bt_object || node->basetype == bt_integer || node->basetype == bt_boolean){
+    VariableInfo vi;
+    vi.type = ConvetToCompoundType(node->basetype, node->identifier->name);
+    vi.offset = currentParameterOffset;
+    currentParameterOffset += 4;
+    vi.size = 4;
+    (*currentVariableTable).insert(node->identifier->name, vi);
+  }else {
+    typeError(undefined_class);
+  }
 }
 
 void TypeCheck::visitDeclarationNode(DeclarationNode* node) {
@@ -180,15 +238,16 @@ void TypeCheck::visitDeclarationNode(DeclarationNode* node) {
     type
     identifier_list
    */
-  if (node->type == IntegerTypeNode) node->basetype = bt_integer;
-  else if (node->type == BooleanTypeNode) node->basetype=bt_boolean;
-  else node->basetype=bt_object;
-  //  if (IsAClass() || node->type==IntegerType || node->type==BooleanType){
+  node->visit_children(this);
+  node->basetype = node->type->basetype;
+  if (node->basetype == bt_object) 
+    node->objectClassName = node->type->objectClassName;
+  else 
+    node->objectClassName = NULL;
+
+  if (IsAClass(node->objectClassName) || node->type==bt_integer || node->type==bt_boolean){
     
-    for (std::iterator<IdentifierNode*> i = node->identifier_list.begin();
-	 i != node->identifier_list.end();
-	 i++ ){
-      
+    for (std::iterator<IdentifierNode*> i = node->identifier_list.begin(); i != node->identifier_list.end(); i++ ){
       VariableInfo vi;
       vi.type = ConvetToCompoundType(node->basetype, i->name);
       vi.offset = currentLocalOffset;
@@ -196,9 +255,10 @@ void TypeCheck::visitDeclarationNode(DeclarationNode* node) {
       vi.size = 4;
       (*currentVariableTable).insert(i->name, vi);
     }
-    //  }else {
-    // throw exception
-    //  }
+
+  }else {
+    typeError(undefined_class);
+  }
   
 }
 
@@ -207,7 +267,8 @@ void TypeCheck::visitReturnStatementNode(ReturnStatementNode* node) {
     expression
    */
   node->visit_children(this);
-  // set expression type??
+  
+  node->basetype = node->expression->basetype;
 }
 
 void TypeCheck::visitAssignmentNode(AssignmentNode* node) {
@@ -223,10 +284,10 @@ void TypeCheck::visitAssignmentNode(AssignmentNode* node) {
     // check if type of a.b is equal to type of expr
     // check if a is vaild class or int or bool
     // check if b is valid subclass of a
-    if (IsAClass(node->identifier_1) && IsASubClassOf(node->identifier_1, node->identifier_2)){
+    if (IsAClass(node->identifier_1->name) && IsASubClassOf(node->identifier_1, node->identifier_2)){
       if (node->identifier_2->basetype != node->expression->basetype)
-	// throw error
-	typeError(errorCode);
+	      // throw error
+	      typeError(errorCode);
     }else{
       // var not defined
       // throw error
@@ -236,9 +297,9 @@ void TypeCheck::visitAssignmentNode(AssignmentNode* node) {
     // a = (expr)
     // check if type of a is equal to type of expr
     // check if a is vaild class or int or bool
-    if (IsAClass(node->identifier)){
+    if (IsAClass(node->identifier_1->name)){
       if (node->identifier_1->basetype != node->expression->basetype)
-	typeError(errorCode);
+	      typeError(errorCode);
     }else
       typeError(undefined_variable);
   }
@@ -248,7 +309,6 @@ void TypeCheck::visitCallNode(CallNode* node) {
   /*
     methodcall
   */
-  
   node->visit_children(this);
 }
 
@@ -259,6 +319,7 @@ void TypeCheck::visitIfElseNode(IfElseNode* node) {
     statement_list_2
    */
   node->visit_children(this);
+  if (node->expression->basetype != bt_boolean) typeError(if_predicate_type_mismatch);
 }
 
 void TypeCheck::visitWhileNode(WhileNode* node) {
@@ -267,6 +328,7 @@ void TypeCheck::visitWhileNode(WhileNode* node) {
     statement_list
    */
   node->visit_children(this);
+  if (node->expression->basetype != bt_boolean) typeError(if_predicate_type_mismatch);
 }
 
 void TypeCheck::visitDoWhileNode(DoWhileNode* node) {
@@ -275,6 +337,7 @@ void TypeCheck::visitDoWhileNode(DoWhileNode* node) {
     expression
    */
   node->visit_children(this);
+  if (node->expression->basetype != bt_boolean) typeError(if_predicate_type_mismatch);
 }
 
 void TypeCheck::visitPrintNode(PrintNode* node) {
@@ -290,6 +353,17 @@ void TypeCheck::visitPlusNode(PlusNode* node) {
     expression_2
    */
   node->visit_children(this);
+
+  node->expression_1->basetype = node->expression_1->type->basetype;
+  node->expression_2->basetype = node->expression_2->type->basetype;
+
+  if (node->expression_1->basetype == node->expression_2->basetype){
+    if (node->expression_1->basetype != bt_integer || node->expression_2->basetype != bt_integer)
+      typeError(expression_type_mismatch);
+  }else
+    typeError(expression_type_mismatch);
+
+  node->basetype = bt_integer;
 }
 
 void TypeCheck::visitMinusNode(MinusNode* node) {
@@ -298,6 +372,17 @@ void TypeCheck::visitMinusNode(MinusNode* node) {
     expression_2
    */
   node->visit_children(this);
+
+  node->expression_1->basetype = node->expression_1->type->basetype;
+  node->expression_2->basetype = node->expression_2->type->basetype;
+
+  if (node->expression_1->basetype == node->expression_2->basetype){
+    if (node->expression_1->basetype != bt_integer || node->expression_2->basetype != bt_integer)
+      typeError(expression_type_mismatch);
+  }else
+    typeError(expression_type_mismatch);
+
+  node->basetype = bt_integer;
 }
 
 void TypeCheck::visitTimesNode(TimesNode* node) {
@@ -306,6 +391,17 @@ void TypeCheck::visitTimesNode(TimesNode* node) {
     expression_2
    */
   node->visit_children(this);
+
+  node->expression_1->basetype = node->expression_1->type->basetype;
+  node->expression_2->basetype = node->expression_2->type->basetype;
+
+  if (node->expression_1->basetype == node->expression_2->basetype){
+    if (node->expression_1->basetype != bt_integer || node->expression_2->basetype != bt_integer)
+      typeError(expression_type_mismatch);
+  }else
+    typeError(expression_type_mismatch);
+
+  node->basetype = bt_integer;
 }
 
 void TypeCheck::visitDivideNode(DivideNode* node) {
@@ -315,6 +411,17 @@ void TypeCheck::visitDivideNode(DivideNode* node) {
     expression_2
    */
   node->visit_children(this);
+
+  node->expression_1->basetype = node->expression_1->type->basetype;
+  node->expression_2->basetype = node->expression_2->type->basetype;
+
+  if (node->expression_1->basetype == node->expression_2->basetype){
+    if (node->expression_1->basetype != bt_integer || node->expression_2->basetype != bt_integer)
+      typeError(expression_type_mismatch);
+  }else
+    typeError(expression_type_mismatch);
+
+  node->basetype = bt_integer;
 }
 
 void TypeCheck::visitGreaterNode(GreaterNode* node) {
@@ -324,6 +431,17 @@ void TypeCheck::visitGreaterNode(GreaterNode* node) {
     expression_2
    */
   node->visit_children(this);
+
+  node->expression_1->basetype = node->expression_1->type->basetype;
+  node->expression_2->basetype = node->expression_2->type->basetype;
+
+  if (node->expression_1->basetype == node->expression_2->basetype){
+    if (node->expression_1->basetype != bt_integer || node->expression_2->basetype != bt_integer)
+      typeError(expression_type_mismatch);
+  }else
+    typeError(expression_type_mismatch);
+
+  node->basetype = bt_boolean;
 }
 
 void TypeCheck::visitGreaterEqualNode(GreaterEqualNode* node) {
@@ -333,6 +451,18 @@ void TypeCheck::visitGreaterEqualNode(GreaterEqualNode* node) {
     expression_2
    */
   node->visit_children(this);
+
+  node->expression_1->basetype = node->expression_1->type->basetype;
+  node->expression_2->basetype = node->expression_2->type->basetype;
+
+  if (node->expression_1->basetype == node->expression_2->basetype)
+    {
+    if (node->expression_1->basetype != bt_integer || node->expression_2->basetype != bt_integer)
+      typeError(expression_type_mismatch);
+  }else
+    typeError(expression_type_mismatch);
+
+  node->basetype = bt_boolean;
 }
 
 void TypeCheck::visitEqualNode(EqualNode* node) {
@@ -342,6 +472,17 @@ void TypeCheck::visitEqualNode(EqualNode* node) {
     expression_2
    */
   node->visit_children(this);
+
+  node->expression_1->basetype = node->expression_1->type->basetype;
+  node->expression_2->basetype = node->expression_2->type->basetype;
+
+  BaseType e1=node->expression_1->basetype, e2=node->expression_2->basetype;
+  if (e1 != e2)
+    typeError(expression_type_mismatch);
+  if (e1 != bt_integer || e1 != bt_boolean)
+    typeError(expression_type_mismatch);
+  
+  node->basetype = bt_boolean;
 }
 
 void TypeCheck::visitAndNode(AndNode* node) {
@@ -351,6 +492,17 @@ void TypeCheck::visitAndNode(AndNode* node) {
     expression_2
    */
   node->visit_children(this);
+
+  node->expression_1->basetype = node->expression_1->type->basetype;
+  node->expression_2->basetype = node->expression_2->type->basetype;
+
+  BaseType e1=node->expression_1->basetype, e2=node->expression_2->basetype;
+  if (e1 != e2)
+    typeError(expression_type_mismatch);
+  if (e1 != bt_boolean)
+    typeError(expression_type_mismatch);
+  
+  node->basetype = bt_boolean;
 }
 
 void TypeCheck::visitOrNode(OrNode* node) {
@@ -360,6 +512,17 @@ void TypeCheck::visitOrNode(OrNode* node) {
     expression_2
    */
   node->visit_children(this);
+
+  node->expression_1->basetype = node->expression_1->type->basetype;
+  node->expression_2->basetype = node->expression_2->type->basetype;
+
+  BaseType e1=node->expression_1->basetype, e2=node->expression_2->basetype;
+  if (e1 != e2)
+    typeError(expression_type_mismatch);
+  if (e1 != bt_boolean)
+    typeError(expression_type_mismatch);
+  
+  node->basetype = bt_boolean;
 }
 
 void TypeCheck::visitNotNode(NotNode* node) {
@@ -368,6 +531,12 @@ void TypeCheck::visitNotNode(NotNode* node) {
     expression
    */
   node->visit_children(this);
+
+  node->expression->basetype = node->expression->type->basetype;
+  if (node->expression->basetype != bt_boolean)
+    typeError(expression_type_mismatch);
+  
+  node->basetype = bt_boolean;
 }
 
 void TypeCheck::visitNegationNode(NegationNode* node) {
@@ -376,6 +545,12 @@ void TypeCheck::visitNegationNode(NegationNode* node) {
     expression
    */
   node->visit_children(this);
+
+  node->expression->basetype = node->expression->type->basetype;
+  if (node->expression->basetype != bt_integer)
+    typeError(expression_type_mismatch);
+  
+  node->basetype = bt_integer;
 }
 
 void TypeCheck::visitMethodCallNode(MethodCallNode* node) {
@@ -386,22 +561,64 @@ void TypeCheck::visitMethodCallNode(MethodCallNode* node) {
     expression_list
    */
   node->visit_children(this);
+  if (node->identifier_2 != NULL){
+    // a.b(stuff)
+    if (!isVar(node->identifier_1->name))
+      typeError(undefined_variable);
+    if (!isMethodOf(node->identifier_2->name, node->identifier_1->name))
+      typeError(undefined_method);
+
+    MethodTable *mt = (*classTable)[node->identifier_1->name].methods;
+    node->basetype = (*mt)[node->identifier_2->name].returnType.baseType;
+    if (node->basetype == bt_object)
+      node->objectClassName = (*mt)[node->identifier_2->name].returnType.objectClassName;
+    delete mt;
+
+  }else{
+    // a(stuff)
+    if (!isMethod(node->identifier_1->name))
+      typeError(undefined_method);
+
+    node->basetype = (*currentMethodTable)[node->identifier_1->name].returnType.baseType;
+    if (node->basetype == bt_object)
+      node->objectClassName = (*currentMethodTable)[node->identifier_1->name].returnType.objectClassName;
+  }
 }
 
 void TypeCheck::visitMemberAccessNode(MemberAccessNode* node) {
-  // WRITEME: Replace with code if necessary
+  /*
+    identifier_1
+    identifier_2
+  */
+  node->visit_children(this);
+  if (IsAClass(node->identifier->name)){
+    if (!isVarOf(node->identifier_2->name, node->identifier_1->name))
+      typeError(undefined_member);
+  }else
+    typeError(undefined_class);
+
+  VariableTable *vt = (*classTable)[node->identifier_1->name].members;
+  node->basetype = (*vt)[node->identifier_2->name].type.baseType;
+
+  delete vt;
 }
 
 void TypeCheck::visitVariableNode(VariableNode* node) {
-  // WRITEME: Replace with code if necessary
+  /*
+    identifier_1
+  */
+  node->visit_children(this);
+  if (!isVarOfCurClass(node->identifier->name))
+    typeError(undefined_variable);
+  // set type here?
 }
 
 void TypeCheck::visitIntegerLiteralNode(IntegerLiteralNode* node) {
-
+  node->basetype = bt_integer;
 }
 
 void TypeCheck::visitBooleanLiteralNode(BooleanLiteralNode* node) {
-
+  node->basetype = bt_boolean;
 }
 
 void TypeCheck::visitNewNode(NewNode* node) {
@@ -410,30 +627,49 @@ void TypeCheck::visitNewNode(NewNode* node) {
     expression_list
    */
   node->visit_children(this);
+  
+  if (!IsAClass(node->identifier->name))
+    typeError(undefined_class);
+  
+  MethodTable *mt = (*classTable)[node->identifier->name].methods;
+  std::list<CompoundType> *params = (*mt)[node->identifier->name].parameters;
+  if ((*params).size() != node->(*expression_list).size())
+    typeError(argument_number_mismatch);
+  
+  std::list<ExpressionNode*>::iterator eIter = node->(*expression_list).begin();
+  for (std::list<CompoundType>::iterator pIter = (*params).begin(); pIter != (*params).end(); pIter++){
+    if ((*pIter).baseType != (*eIter)->basetype)
+      typeError(argument_type_mismatch);
+    eIter++;
+  }
+
+  node->basetype = bt_object;
+  node->objectClassName = (*mt)[node->identifier->name].returnType.objectClassName;
+
+  delete mt, params;
 }
 
 void TypeCheck::visitIntegerTypeNode(IntegerTypeNode* node) {
-
+  node->basetype = bt_integer;
 }
 
 void TypeCheck::visitBooleanTypeNode(BooleanTypeNode* node) {
-
+  node->basetype = bt_boolean;
 }
 
 void TypeCheck::visitObjectTypeNode(ObjectTypeNode* node) {
-
+  node->basetype = bt_object;
+  node->objectClassName = node->identifier->name;
 }
 
 void TypeCheck::visitNoneNode(NoneNode* node) {
-
+  node->basetype = bt_none;
 }
 
 void TypeCheck::visitIdentifierNode(IdentifierNode* node) {
-
 }
 
 void TypeCheck::visitIntegerNode(IntegerNode* node) {
-
 }
 
 
