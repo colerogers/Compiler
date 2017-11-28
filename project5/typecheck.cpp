@@ -89,14 +89,20 @@ bool isMethodOf(std::string method, std::string className, ClassTable *classTabl
   // checks the class passed in if it contains the method
   return (*classTable)[className].methods->count(method);
 }
-
 bool IsASubClassOf(std::string className, std::string superClassName, ClassTable *classTable) {
   if (distance((*classTable).begin(), (*classTable).find(className)) >= distance((*classTable).begin(), (*classTable).find(superClassName)))
     return false;
   return true;
   
 }
+CompoundType ConvertToCompoundType(BaseType bt, std::string name){
+  CompoundType ct;
+  if(bt == bt_object)
+    ct.objectClassName = name;
+  ct.baseType = bt;
 
+  return ct;
+}
 
 
 
@@ -180,12 +186,14 @@ void TypeCheck::visitMethodNode(MethodNode* node) {
   (*currentMethodTable)[node->identifier->name].variables = currentVariableTable;
 
   node->visit_children(this);
-
+  /*
   CompoundType ct;
   if(node->type->basetype == bt_object)
     ct.objectClassName = node->type->objectClassName;
   ct.baseType = node->type->basetype;
   (*currentMethodTable)[node->identifier->name].returnType = ct;
+  */
+  (*currentMethodTable)[node->identifier->name].returnType = ConvertToCompoundType(node->type->basetype, node->type->objectClassName);
   
   if (node->type->basetype != node->methodbody->basetype){
     typeError(return_type_mismatch);
@@ -196,7 +204,7 @@ void TypeCheck::visitMethodNode(MethodNode* node) {
     // we have param's
     std::list<CompoundType> *p = new std::list<CompoundType>();
     for (std::list<ParameterNode*>::iterator i=node->parameter_list->begin(); i != node->parameter_list->end(); i++){
-      p->push_back(ConvertToCompoundType((*i)->type->basetype, (*i)->identifier->name));//create method??
+      p->push_back(ConvertToCompoundType((*i)->basetype, (*i)->objectClassName));//create method??
     }
     (*currentMethodTable)[node->identifier->name].parameters = p;
   }
@@ -204,8 +212,8 @@ void TypeCheck::visitMethodNode(MethodNode* node) {
   // check if constructor returns None
 
   // update size
-  (*currentMethodTable)[node->identifier->name].localsSize = 0;
-  (*currentVariableTable);
+  //(*currentMethodTable)[node->identifier->name].localsSize = 0;
+  //(*currentVariableTable)[];
 }
 
 void TypeCheck::visitMethodBodyNode(MethodBodyNode* node) {
@@ -236,11 +244,14 @@ void TypeCheck::visitParameterNode(ParameterNode* node) {
   if (node->basetype == bt_object || node->basetype == bt_integer || node->basetype == bt_boolean){
     VariableInfo vi;
     //vi.type = ConvertToCompoundType(node->basetype, node->identifier->name);
+    /*
     CompoundType ct;
     if(node->type->basetype == bt_object)
       ct.objectClassName = node->type->objectClassName;
     ct.baseType = node->type->basetype;
     vi.type = ct;
+    */
+    vi.type = ConvertToCompoundType(node->basetype, node->objectClassName);
     vi.offset = currentParameterOffset;
     currentParameterOffset += 4;
     vi.size = 4;
@@ -268,11 +279,14 @@ void TypeCheck::visitDeclarationNode(DeclarationNode* node) {
     for (std::list<IdentifierNode*>::iterator i = node->identifier_list->begin(); i != node->identifier_list->end(); i++ ){
       VariableInfo vi;
       //vi.type = ConvertToCompoundType(node->basetype, (*i)->name);
+      /*
       CompoundType ct;
       if(node->type->basetype == bt_object)
 	ct.objectClassName = node->type->objectClassName;
       ct.baseType = node->type->basetype;
       vi.type = ct;
+      */
+      vi.type = ConvertToCompoundType(node->basetype, node->objectClassName);
       vi.offset = currentLocalOffset;
       currentLocalOffset -= 4;
       vi.size = 4;
@@ -307,24 +321,22 @@ void TypeCheck::visitAssignmentNode(AssignmentNode* node) {
     // check if type of a.b is equal to type of expr
     // check if a is vaild class or int or bool
     // check if b is valid subclass of a
-    if (IsAClass(node->identifier_1->name, classTable) && IsAClass(node->identifier_2->name, classTable) &&  IsASubClassOf(node->identifier_1->name, node->identifier_2->name, classTable)){
-      if (node->identifier_2->basetype != node->expression->basetype)
-	      // throw error
-	      typeError(errorCode);
-    }else{
-      // var not defined
-      // throw error
+    if (!IsAClass(node->identifier_1->name, classTable))
+      typeError(not_object);
+    if (!isVar(node->identifier_1->name, currentVariableTable))
       typeError(undefined_variable);
-    } 
+    if (!isVarOf(node->identifier_2->name, node->identifier_1->name, classTable))
+      typeError(undefined_member);
+    if (node->identifier_2->basetype != node->expression->basetype)
+      typeError(assignment_type_mismatch);
   }else {
     // a = (expr)
     // check if type of a is equal to type of expr
     // check if a is vaild class or int or bool
-    if (IsAClass(node->identifier_1->name, classTable)){
-      if (node->identifier_1->basetype != node->expression->basetype)
-	      typeError(errorCode);
-    }else
+    if (!isVar(node->identifier_1->name, currentVariableTable))
       typeError(undefined_variable);
+    if (node->identifier_1->basetype != node->expression->basetype)
+	      typeError(assignment_type_mismatch);
   }
 }
 
@@ -586,9 +598,9 @@ void TypeCheck::visitMethodCallNode(MethodCallNode* node) {
   node->visit_children(this);
   if (node->identifier_2 != NULL){
     // a.b(stuff)
-    if (!isVar(node->identifier_1->name))
+    if (!isVar(node->identifier_1->name, currentVariableTable))
       typeError(undefined_variable);
-    if (!isMethodOf(node->identifier_2->name, node->identifier_1->name))
+    if (!isMethodOf(node->identifier_2->name, node->identifier_1->name, classTable))
       typeError(undefined_method);
 
     MethodTable *mt = (*classTable)[node->identifier_1->name].methods;
@@ -615,7 +627,7 @@ void TypeCheck::visitMemberAccessNode(MemberAccessNode* node) {
   */
   node->visit_children(this);
   if (IsAClass(node->identifier_1->name, classTable)){
-    if (!isVarOf(node->identifier_2->name, node->identifier_1->name, currentVariableTable))
+    if (!isVarOf(node->identifier_2->name, node->identifier_1->name, classTable))
       typeError(undefined_member);
   }else
     typeError(undefined_class);
@@ -656,10 +668,10 @@ void TypeCheck::visitNewNode(NewNode* node) {
   
   MethodTable *mt = (*classTable)[node->identifier->name].methods;
   std::list<CompoundType> *params = (*mt)[node->identifier->name].parameters;
-  if ((*params).size() != node->(*expression_list).size())
+  if ((*params).size() != node->expression_list->size())
     typeError(argument_number_mismatch);
   
-  std::list<ExpressionNode*>::iterator eIter = node->(*expression_list).begin();
+  std::list<ExpressionNode*>::iterator eIter = node->expression_list->begin();
   for (std::list<CompoundType>::iterator pIter = (*params).begin(); pIter != (*params).end(); pIter++){
     if ((*pIter).baseType != (*eIter)->basetype)
       typeError(argument_type_mismatch);
