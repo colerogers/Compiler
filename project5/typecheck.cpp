@@ -131,6 +131,7 @@ void TypeCheck::visitProgramNode(ProgramNode* node) {
    */
   // create class table, 1 class table per program
   classTable = new ClassTable();
+  print(*classTable);
   // visit every children of this node to build the symbol table
   node->visit_children(this);
 }
