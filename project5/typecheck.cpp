@@ -77,7 +77,7 @@ bool isVar(std::string var, VariableTable *currentVariableTable){
 bool isVarOf(std::string var, std::string className, ClassTable *classTable){
   return (*classTable)[className].members->count(var);
 }
-bool isVarOfCurClass(std::string var, VariableTable *currentVariableTable, ClassTable *classTable){
+bool isVarOfCurClass(std::string var, VariableTable *currentVariableTable, ClassTable *classTable, std::string currentClassName){
   // checks currentMethodTable and (*classTable)[currentClassName].members
   return (*currentVariableTable).count(var) || (*classTable)[currentClassName].members->count(var);
 }
@@ -91,7 +91,10 @@ bool isMethodOf(std::string method, std::string className, ClassTable *classTabl
 }
 
 bool IsASubClassOf(std::string className, std::string superClassName, ClassTable *classTable) {
-  return (*classTable)[className].;
+  if (distance((*classTable).begin(), (*classTable).find(className)) >= distance((*classTable).begin(), (*classTable).find(superClassName)))
+    return false;
+  return true;
+  
 }
 
 
@@ -139,20 +142,20 @@ void TypeCheck::visitClassNode(ClassNode* node) {
   // this member will have the correct offset
   currentMemberOffset = 0;
 
-  currentClassName = node->identifier_1; // set the class name
-  ClassInfo ci = new ClassInfo; 
+  currentClassName = node->identifier_1->name; // set the class name
+  ClassInfo ci; 
   ci.methods = new MethodTable();
   ci.members = new VariableTable();
 
   // add superclass later
 
-  currentVariableTable = &ci.members;
-  classTable.insert(currentClassName, ci);
+  currentVariableTable = ci.members;
+  (*classTable).insert(std::pair<std::string, ClassInfo>(currentClassName, ci));
 
   node->visit_children(this);
 
   // add method size later
-  (*classTable)[currentClassName].memberSize = 0;
+  (*classTable)[currentClassName].membersSize = 0;
   
 }
 
@@ -167,7 +170,7 @@ void TypeCheck::visitMethodNode(MethodNode* node) {
   currentParameterOffset = 12;
 
   currentMethodTable = classTable->at(currentClassName).methods;
-  MethodInfo mi = new MethodInfo();
+  MethodInfo mi;
   mi.returnType = node->type; // need to switch from basetype to compound type
   // add parameters from list<ParameterNode*> to list<CompoundType> 
   currentMethodTable.insert(node->identifier->name, mi);
@@ -185,7 +188,7 @@ void TypeCheck::visitMethodNode(MethodNode* node) {
   if (node->parameter_list != NULL){
     // we have param's
     std::list<CompoundType> p = new list<CompoundType>();
-    for (std::iterator<ParameterNode*> *i=node->parameter_list.begin(); i!=node->parameter_list.end(); i++){
+    for (std::list<ParameterNode*>::iterator i=node->parameter_list->begin(); i != node->parameter_list->end(); i++){
       p->push_back(ConvetToCompoundType((*i)->type->basetype, (*i)->identifier->name));
     }
     (*currentMethodTable)[node->identifier->name].parameters = &p;
@@ -195,7 +198,7 @@ void TypeCheck::visitMethodNode(MethodNode* node) {
 
   // update size
   (*currentMethodTable)[node->identifier->name].localsSize = 0;
-  (*currentVariableTable)
+  (*currentVariableTable);
 }
 
 void TypeCheck::visitMethodBodyNode(MethodBodyNode* node) {
@@ -286,7 +289,7 @@ void TypeCheck::visitAssignmentNode(AssignmentNode* node) {
     // check if type of a.b is equal to type of expr
     // check if a is vaild class or int or bool
     // check if b is valid subclass of a
-    if (IsAClass(node->identifier_1->name, classTable) && IsASubClassOf(node->identifier_1->name, node->identifier_2->name, classTable)){
+    if (IsAClass(node->identifier_1->name, classTable) && IsAClass(node->identifier_2->name, classTable) &&  IsASubClassOf(node->identifier_1->name, node->identifier_2->name, classTable)){
       if (node->identifier_2->basetype != node->expression->basetype)
 	      // throw error
 	      typeError(errorCode);
@@ -593,7 +596,7 @@ void TypeCheck::visitMemberAccessNode(MemberAccessNode* node) {
     identifier_2
   */
   node->visit_children(this);
-  if (IsAClass(node->identifier->name, classTable)){
+  if (IsAClass(node->identifier_1->name, classTable)){
     if (!isVarOf(node->identifier_2->name, node->identifier_1->name, currentVariableTable))
       typeError(undefined_member);
   }else
@@ -610,7 +613,7 @@ void TypeCheck::visitVariableNode(VariableNode* node) {
     identifier_1
   */
   node->visit_children(this);
-  if (!isVarOfCurClass(node->identifier->name, currentVariableTable, classTable))
+  if (!isVarOfCurClass(node->identifier->name, currentVariableTable, classTable, currentClassName))
     typeError(undefined_variable);
   // set type here?
 }
