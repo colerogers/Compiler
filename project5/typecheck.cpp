@@ -611,7 +611,7 @@ void TypeCheck::visitMethodCallNode(MethodCallNode* node) {
 
   }else{
     // a(stuff)
-    if (!isMethod(node->identifier_1->name))
+    if (!isMethod(node->identifier_1->name, currentMethodTable))
       typeError(undefined_method);
 
     node->basetype = (*currentMethodTable)[node->identifier_1->name].returnType.baseType;
