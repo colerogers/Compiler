@@ -74,7 +74,7 @@ bool IsAClass(std::string className, ClassTable *classTable){
     //std::cout<<"true"<<std::endl;
     return true;
   }else{
-    std::cout<<"false"<<std::endl;
+    //std::cout<<"false"<<std::endl;
     return false;
   }
 }
@@ -82,9 +82,29 @@ bool isVar(std::string var, VariableTable *currentVariableTable){
   // checks the current variableTable for the variable
   return ((*currentVariableTable).count(var) == 1);
 }
+
 bool isVarOf(std::string var, std::string className, ClassTable *classTable){
-  return ((*classTable)[className].members->count(var) == 1);
+  if ((*classTable)[className].members->count(var))
+    return true;
+  else{
+    if ((*classTable)[className].superClassName.empty())
+      return false;
+    return isVarOf(var, (*classTable)[className].superClassName, classTable);
+  }
+  //  return ((*classTable)[className].members->count(var) == 1);
 }
+VariableInfo getVIForMember(std::string var, std::string className, ClassTable *classTable){
+  //std::cout<<"in vi"<<std::endl;
+  if ((*classTable)[className].members->count(var)==1){
+    //std::cout<<"found"<<std::endl;
+    return (*classTable)[className].members->at(var);
+  }
+  else{
+    //std::cout<<"rec"<<std::endl;
+    return getVIForMember(var, (*classTable)[className].superClassName, classTable);
+  }
+}
+
 bool isVarOfCurClass(std::string var, VariableTable *currentVariableTable, ClassTable *classTable, std::string currentClassName){
   // checks currentMethodTable and (*classTable)[currentClassName].members
   return (((*currentVariableTable).count(var)==1) || ((*classTable)[currentClassName].members->count(var)==1));
@@ -93,10 +113,30 @@ bool isMethod(std::string method, MethodTable *currentMethodTable){
   // checks the current class for method
   return ((*currentMethodTable).count(method)==1);
 }
+
 bool isMethodOf(std::string method, std::string className, ClassTable *classTable){
   // checks the class passed in if it contains the method
-  return ((*classTable)[className].methods->count(method)==1);
+  if ((*classTable)[className].methods->count(method) == 1){
+    return true;
+  }else{
+    if ((*classTable)[className].superClassName.empty()){
+      return false;
+    }else
+      return isMethodOf(method, (*classTable)[className].superClassName, classTable);
+  }
+  //  return ((*classTable)[className].methods->count(method)==1);
 }
+MethodInfo getMIForMethod(std::string method, std::string className, ClassTable *classTable){
+  //std::cout<<"in getMI"<<std::endl;
+  if ((*classTable)[className].methods->count(method)==1){
+    //std::cout<<"found method"<<std::endl;
+    return (*classTable)[className].methods->at(method);
+  }else{
+    //std::cout<<"rec method"<<std::endl;
+    return getMIForMethod(method, (*classTable)[className].superClassName, classTable);
+  }
+}
+
 bool IsASubClassOf(std::string className, std::string superClassName, ClassTable *classTable) {
   if (distance((*classTable).begin(), (*classTable).find(className)) >= distance((*classTable).begin(), (*classTable).find(superClassName)))
     return false;
@@ -145,7 +185,7 @@ void TypeCheck::visitProgramNode(ProgramNode* node) {
 
   if ((*classTable).count("Main") == 1){
     // there's a Main class
-    if ((*classTable)["Main"].members != NULL)
+    if ((*classTable)["Main"].members->size() != 0)
       typeError(main_class_members_present);
     if ((*classTable)["Main"].methods->count("main") != 1)
       typeError(no_main_method);
@@ -180,12 +220,15 @@ void TypeCheck::visitClassNode(ClassNode* node) {
     if (IsAClass(node->identifier_2->name, classTable)){
       superClassName = node->identifier_2->name;
       // add all members of super class to our class
+      /*
       for (auto i = (*classTable)[superClassName].members->begin(); i!=(*classTable)[superClassName].members->end(); ++i){
 	ci.members->insert(std::pair<std::string, VariableInfo>((*i).first, { (*i).second.type, currentMemberOffset+=4, 4 }));
 	//ci.members[(*i).first] = { (*i).second.type, currentMemberOffset+=4, 4 };
       }
-    }else
+      */
+    }else{
       typeError(undefined_class);
+    }
   }
   ci.superClassName = superClassName;
 
@@ -215,7 +258,7 @@ void TypeCheck::visitMethodNode(MethodNode* node) {
   MethodInfo mi;
   mi.returnType = ConvertToCompoundType(bt_none, "");
   mi.variables = NULL;
-  mi.parameters = NULL;
+  mi.parameters = new std::list<CompoundType>();
   mi.localsSize = 0;
   
   (*currentMethodTable).insert(std::pair<std::string, MethodInfo>(node->identifier->name, mi));
@@ -234,15 +277,15 @@ void TypeCheck::visitMethodNode(MethodNode* node) {
   }
   
   // check for null param's
-  if (node->parameter_list != NULL){
+  if (!node->parameter_list->empty()){
     // we have param's
-    std::list<CompoundType> *p = new std::list<CompoundType>();
+    //std::list<CompoundType> *p = new std::list<CompoundType>();
     for (std::list<ParameterNode*>::iterator i=node->parameter_list->begin(); i != node->parameter_list->end(); i++){
-      p->push_back(ConvertToCompoundType((*i)->basetype, (*i)->objectClassName));//create method??
-      
+      (*classTable)[currentClassName].methods->at(node->identifier->name).parameters->push_back(ConvertToCompoundType((*i)->basetype, (*i)->objectClassName));
+      //p->push_back(ConvertToCompoundType((*i)->basetype, (*i)->objectClassName));//create method??
     }
-    (*currentMethodTable)[node->identifier->name].parameters = p;
-    delete p;
+    //(*currentMethodTable)[node->identifier->name].parameters = p;
+    //delete p;
   }
 
 
@@ -265,8 +308,9 @@ void TypeCheck::visitMethodBodyNode(MethodBodyNode* node) {
     returnstatement
    */
   //print(*classTable);
+  //std::cout<<"before visit children in MethodBodyNode"<<std::endl;
   node->visit_children(this);
-  //std::cout<<"after visit children"<<std::endl;
+  //std::cout<<"after visit children in MethodBodyNode"<<std::endl;
   //print(*classTable);
   
   if (node->returnstatement == NULL){
@@ -287,6 +331,8 @@ void TypeCheck::visitParameterNode(ParameterNode* node) {
   //std::cout<<currentClassName<<std::endl;
   //print(*classTable);
 
+  //std::cout<<node->identifier->name<<std::endl;
+  //node->identifier->basetype = node->type->basetype;
   
   node->basetype = node->type->basetype;
   if (node->basetype == bt_object) node->objectClassName = node->type->objectClassName;
@@ -340,12 +386,13 @@ void TypeCheck::visitDeclarationNode(DeclarationNode* node) {
       //std::cout<<"before convert"<<std::endl;
       vi.type = ConvertToCompoundType(node->basetype, node->objectClassName);
       //std::cout<<"after convert"<<std::endl;
-      vi.offset = currentLocalOffset;
       vi.size = 4;
       if (isMember){
+	vi.offset = currentMemberOffset;
 	currentMemberOffset += 4;
 	(*classTable)[currentClassName].members->insert(std::pair<std::string, VariableInfo>((*i)->name, vi));
       }else{
+	vi.offset = currentLocalOffset;
 	currentLocalOffset -= 4;
 	(*currentVariableTable).insert(std::pair<std::string, VariableInfo>((*i)->name, vi));
       }
@@ -375,31 +422,60 @@ void TypeCheck::visitAssignmentNode(AssignmentNode* node) {
     identifier_2
     expression
    */
+  //std::cout<<"In assignment Node"<<std::endl;
   node->visit_children(this);
-  
+  //std::cout<<"after visit children"<<std::endl;
+
   if (node->identifier_2 != NULL){
     // a.b = (expr)
     // check if type of a.b is equal to type of expr
     // check if a is vaild class or int or bool
     // check if b is valid subclass of a
-    if (!IsAClass(node->identifier_1->name, classTable)){
-      std::cout<<"in here"<<std::endl;
-      typeError(not_object);
-    }
-    if (!isVar(node->identifier_1->name, currentVariableTable))
+    //std::cout<<"assignment node id2 not null"<<std::endl;
+
+    if (isVarOfCurClass(node->identifier_1->name, currentVariableTable, classTable, currentClassName)){
+      VariableInfo vi;
+      if ((*currentVariableTable).count(node->identifier_1->name)==1)
+	vi = (*currentVariableTable)[node->identifier_1->name];
+      else
+	vi = (*classTable)[currentClassName].members->at(node->identifier_1->name);
+      //VariableInfo vi = (*currentVariableTable)[node->identifier_1->name];
+      if (IsAClass(vi.type.objectClassName, classTable)){
+
+	if (isVarOf(node->identifier_2->name, vi.type.objectClassName, classTable)){
+	  //if (node->identifier_2->basetype != node->expression->basetype)
+	  VariableInfo vi_2 = getVIForMember(node->identifier_2->name, vi.type.objectClassName, classTable);
+	//if ((*classTable)[vi.type.objectClassName].members->at(node->identifier_2->name).type.baseType != node->expression->basetype)
+	  if (vi_2.type.baseType != node->expression->basetype)
+	    typeError(assignment_type_mismatch);
+	}else
+	  typeError(undefined_member);
+	
+	
+      }else{
+	typeError(not_object);
+      }
+    }else{
       typeError(undefined_variable);
-    if (!isVarOf(node->identifier_2->name, node->identifier_1->name, classTable))
-      typeError(undefined_member);
-    if (node->identifier_2->basetype != node->expression->basetype)
-      typeError(assignment_type_mismatch);
+    }
+
+
   }else {
     // a = (expr)
     // check if type of a is equal to type of expr
     // check if a is vaild class or int or bool
-    if (!isVar(node->identifier_1->name, currentVariableTable))
+    if (!isVarOfCurClass(node->identifier_1->name, currentVariableTable, classTable, currentClassName)){
       typeError(undefined_variable);
-    if (node->identifier_1->basetype != node->expression->basetype)
-	      typeError(assignment_type_mismatch);
+    }
+    //if (node->identifier_1->basetype != node->expression->basetype)
+    //    typeError(assignment_type_mismatch);
+    VariableInfo vi;
+    if ((*currentVariableTable).count(node->identifier_1->name)==1)
+      vi = (*currentVariableTable)[node->identifier_1->name];
+    else
+      vi = (*classTable)[currentClassName].members->at(node->identifier_1->name);
+    if (vi.type.baseType != node->expression->basetype)
+      typeError(assignment_type_mismatch);
   }
 }
 
@@ -425,7 +501,7 @@ void TypeCheck::visitWhileNode(WhileNode* node) {
     expression
     statement_list
    */
-  std::cout<<currentClassName<<std::endl;
+  //std::cout<<currentClassName<<std::endl;
   node->visit_children(this);
   if (node->expression->basetype != bt_boolean) typeError(while_predicate_type_mismatch);
 }
@@ -435,7 +511,7 @@ void TypeCheck::visitDoWhileNode(DoWhileNode* node) {
     statement_list
     expression
    */
-  std::cout<<currentClassName<<std::endl;
+  //std::cout<<currentClassName<<std::endl;
   node->visit_children(this);
   if (node->expression->basetype != bt_boolean) typeError(do_while_predicate_type_mismatch);
 }
@@ -444,6 +520,7 @@ void TypeCheck::visitPrintNode(PrintNode* node) {
   /*
     expression
    */
+  //std::cout<<"In PrintNode"<<std::endl;
   node->visit_children(this);
 }
 
@@ -510,11 +587,10 @@ void TypeCheck::visitDivideNode(DivideNode* node) {
     expression_1
     expression_2
    */
+  //std::cout<<"Divide Node"<<std::endl;
   node->visit_children(this);
 
-  //node->expression_1->basetype = node->expression_1->type->basetype;
-  //node->expression_2->basetype = node->expression_2->type->basetype;
-
+  
   if (node->expression_1->basetype == node->expression_2->basetype){
     if (node->expression_1->basetype != bt_integer && node->expression_2->basetype != bt_integer)
       typeError(expression_type_mismatch);
@@ -593,10 +669,7 @@ void TypeCheck::visitAndNode(AndNode* node) {
     expression_2
    */
   node->visit_children(this);
-
-  //node->expression_1->basetype = node->expression_1->type->basetype;
-  //node->expression_2->basetype = node->expression_2->type->basetype;
-
+  
   BaseType e1=node->expression_1->basetype, e2=node->expression_2->basetype;
   if (e1 != e2)
     typeError(expression_type_mismatch);
@@ -661,29 +734,71 @@ void TypeCheck::visitMethodCallNode(MethodCallNode* node) {
     identifier_2
     expression_list
    */
+  //std::cout<<"MethodCallNode"<<std::endl;
   node->visit_children(this);
+  //std::cout<<"MethodCallNode"<<std::endl;
   if (node->identifier_2 != NULL){
     // a.b(stuff)
-    if (!isVar(node->identifier_1->name, currentVariableTable))
+    if (!isVarOfCurClass(node->identifier_1->name, currentVariableTable, classTable, currentClassName)){
+
       typeError(undefined_variable);
-    if (!isMethodOf(node->identifier_2->name, node->identifier_1->name, classTable))
-      typeError(undefined_method);
+    }
 
-    MethodTable *mt = (*classTable)[node->identifier_1->name].methods;
-    node->basetype = (*mt)[node->identifier_2->name].returnType.baseType;
-    if (node->basetype == bt_object)
-      node->objectClassName = (*mt)[node->identifier_2->name].returnType.objectClassName;
-    delete mt;
+    VariableInfo vi;
+    if ((*currentVariableTable).count(node->identifier_1->name)==1)
+      vi = (*currentVariableTable)[node->identifier_1->name];
+    else
+      vi = (*classTable)[currentClassName].members->at(node->identifier_1->name);
+    
+    if (IsAClass(vi.type.objectClassName, classTable)){
 
+      if (!isMethodOf(node->identifier_2->name, vi.type.objectClassName, classTable))
+	typeError(undefined_method);
+
+      MethodInfo mi = getMIForMethod(node->identifier_2->name, vi.type.objectClassName, classTable);
+
+      // check sizes of expression_list
+      if (mi.parameters->size() != node->expression_list->size()){
+	typeError(argument_number_mismatch);
+      }
+
+      std::list<ExpressionNode*>::iterator eIter = node->expression_list->begin();
+      for (std::list<CompoundType>::iterator pIter = mi.parameters->begin(); pIter != mi.parameters->end(); pIter++){
+	if ((*pIter).baseType != (*eIter)->basetype)
+	  typeError(argument_type_mismatch);
+	eIter++;
+      }
+      
+      node->basetype = mi.returnType.baseType;
+      if (node->basetype == bt_object)
+	node->objectClassName = mi.returnType.objectClassName;
+	
+    } else{
+      //std::cout<<"HERE"<<std::endl;
+      typeError(not_object);
+    }
   }else{
     // a(stuff)
     if (!isMethod(node->identifier_1->name, currentMethodTable))
       typeError(undefined_method);
 
+    //check sizes of lists
+    if ((*currentMethodTable)[node->identifier_1->name].parameters->size() != node->expression_list->size()){
+      typeError(argument_number_mismatch);
+    }
+
+    std::list<ExpressionNode*>::iterator eIter = node->expression_list->begin();
+      for (std::list<CompoundType>::iterator pIter = (*currentMethodTable)[node->identifier_1->name].parameters->begin(); pIter != (*currentMethodTable)[node->identifier_1->name].parameters->end(); pIter++){
+	if ((*pIter).baseType != (*eIter)->basetype)
+	  typeError(argument_type_mismatch);
+	eIter++;
+      }
+
     node->basetype = (*currentMethodTable)[node->identifier_1->name].returnType.baseType;
     if (node->basetype == bt_object)
       node->objectClassName = (*currentMethodTable)[node->identifier_1->name].returnType.objectClassName;
   }
+  //std::cout<<"At END"<<std::endl;
 }
 
 void TypeCheck::visitMemberAccessNode(MemberAccessNode* node) {
@@ -691,49 +806,37 @@ void TypeCheck::visitMemberAccessNode(MemberAccessNode* node) {
     identifier_1
     identifier_2
   */
+  
   node->visit_children(this);
-  VariableInfo vi;
-  std::cout<<"In member access"<<std::endl;
+  
+  //std::cout<<"In member access"<<std::endl;
   if (isVarOfCurClass(node->identifier_1->name, currentVariableTable, classTable, currentClassName)){
-    std::cout<<"In if"<<std::endl;
-    VariableInfo vi = (*currentVariableTable)[node->identifier_1->name];
+    //std::cout<<"In if"<<std::endl;
+    VariableInfo vi;
+    if ((*currentVariableTable).count(node->identifier_1->name)==1)
+      vi = (*currentVariableTable)[node->identifier_1->name];
+    else
+      vi = (*classTable)[currentClassName].members->at(node->identifier_1->name);
+
+
+    //std::cout<<"before IsAClass"<<std::endl;
     if (IsAClass(vi.type.objectClassName, classTable)){
-      std::cout<<"In if"<<std::endl;
       if (!isVarOf(node->identifier_2->name, vi.type.objectClassName, classTable))
 	      typeError(undefined_member);
-      node->basetype = node->identifier_2->basetype;
-      node->objectClassName = node->identifier_2->objectClassName;
-      std::cout<<"after if"<<std::endl;
-    }else
+      VariableInfo vi_2 = getVIForMember(node->identifier_2->name, vi.type.objectClassName, classTable);
+      node->basetype = vi_2.type.baseType;
+      if (node->basetype==bt_object)
+	node->objectClassName = vi_2.type.objectClassName;
+      //std::cout<<"after if"<<std::endl;
+
+
+      
+    }else{
       typeError(undefined_class);
-  }else
+    }
+  }else{
     typeError(undefined_variable);
-  /*
-  if (IsAClass(node->identifier_1->objectClassName, classTable)){
-    if (!isVarOf(node->identifier_2->name, node->identifier_1->objectClassName, classTable))
-      typeError(undefined_member);
-  }else
-    typeError(undefined_class);
-  */
-
-  //VariableTable *vt = (*classTable)[vi.type.objectClassName].members;
-  //node->basetype = (*vt)[node->identifier_2->name].type.baseType;
-  /*
-  std::cout<<"before"<<std::endl;
-  VariableTable *vt = (*classTable)[vi.type.objectClassName].members;  //.members->at(node->identifier_2->name).type.baseType;
-
-  std::cout<<"before_if"<<std::endl;
-  if (node->identifier_2->name.empty())
-    std::cout<<"NULL"<<std::endl;
-  if (vt->count(node->identifier_2->name) == 1){
-    std::cout<<"exists"<<std::endl;
-    node->basetype = (*vt)[node->identifier_2->name].type.baseType;
   }
-  
-  delete vt;
-  */
-  std::cout<<"after"<<std::endl;
-  
 }
 
 void TypeCheck::visitVariableNode(VariableNode* node) {
@@ -741,8 +844,17 @@ void TypeCheck::visitVariableNode(VariableNode* node) {
     identifier_1
   */
   node->visit_children(this);
-  if (!isVarOfCurClass(node->identifier->name, currentVariableTable, classTable, currentClassName))
-    typeError(undefined_variable);
+  node->basetype = node->identifier->basetype;
+  if (node->basetype==bt_object)
+    node->objectClassName = node->identifier->objectClassName;
+  
+  if (!isVarOfCurClass(node->identifier->name, currentVariableTable, classTable, currentClassName)){
+    if (!isVarOf(node->identifier->name, currentClassName, classTable))
+      typeError(undefined_variable);
+    //std::cout<<"here"<<std::endl;
+    //std::cout<<node->identifier->name<<std::endl;
+    
+  }
   // set type here?
 }
 
@@ -763,47 +875,85 @@ void TypeCheck::visitNewNode(NewNode* node) {
   
   if (!IsAClass(node->identifier->name, classTable))
     typeError(undefined_class);
+
+  if ((*classTable)[node->identifier->name].methods->count(node->identifier->name) != 1)
+    typeError(undefined_method);
+
   
+  if ((*classTable)[node->identifier->name].methods->at(node->identifier->name).parameters->size() != node->expression_list->size()){
+  
+    typeError(argument_number_mismatch);
+  }
+  
+  /*  
+  if (!isMethodOf(node->identifier->name, node->identifier->name, classTable))
+    typeError(undefined_method);
+
+  MethodInfo mi = getMIForMethod(node->identifier->name, node->identifier->name, classTable);
+  /*
   MethodTable *mt = (*classTable)[node->identifier->name].methods;
   std::list<CompoundType> *params = (*mt)[node->identifier->name].parameters;
   if ((*params).size() != node->expression_list->size())
     typeError(argument_number_mismatch);
+  */
+  /*
+  if ((*classTable)[node->identifier->name].methods->at(node->identifier->name).parameters->size() != node->expression_list->size()){
+    std::cout<<(*classTable)[node->identifier->name].methods->at(node->identifier->name).parameters->size()<<std::endl;
+    std::cout<<node->expression_list->size()<<std::endl;
+    typeError(argument_number_mismatch);
+  }
+  
+ 
+  if (mi.parameters->size() != node->expression_list->size()){
+    typeError(argument_number_mismatch);
+  }
+  */
   
   std::list<ExpressionNode*>::iterator eIter = node->expression_list->begin();
-  for (std::list<CompoundType>::iterator pIter = (*params).begin(); pIter != (*params).end(); pIter++){
+  for (std::list<CompoundType>::iterator pIter = (*classTable)[node->identifier->name].methods->at(node->identifier->name).parameters->begin(); pIter != (*classTable)[node->identifier->name].methods->at(node->identifier->name).parameters->end(); pIter++){
     if ((*pIter).baseType != (*eIter)->basetype)
       typeError(argument_type_mismatch);
     eIter++;
   }
 
   node->basetype = bt_object;
-  node->objectClassName = (*mt)[node->identifier->name].returnType.objectClassName;
-
-  delete mt, params;
+  node->objectClassName = (*classTable)[node->identifier->name].methods->at(node->identifier->name).returnType.objectClassName;
+  //node->objectClassName = mi.returnType.objectClassName;
+  //delete mt, params;
 }
 
 void TypeCheck::visitIntegerTypeNode(IntegerTypeNode* node) {
   node->basetype = bt_integer;
-  std::cout<<currentClassName+"setting int"<<std::endl;
+  //std::cout<<currentClassName+"setting int"<<std::endl;
 }
 
 void TypeCheck::visitBooleanTypeNode(BooleanTypeNode* node) {
   node->basetype = bt_boolean;
-  std::cout<<currentClassName + "setting boolean"<<std::endl;
+  //std::cout<<currentClassName + "setting boolean"<<std::endl;
 }
 
 void TypeCheck::visitObjectTypeNode(ObjectTypeNode* node) {
   node->basetype = bt_object;
   node->objectClassName = node->identifier->name;
-  std::cout<<currentClassName+"setting obj"<<std::endl;
+  //std::cout<<currentClassName+"setting obj"<<std::endl;
 }
 
 void TypeCheck::visitNoneNode(NoneNode* node) {
   node->basetype = bt_none;
-  std::cout<<currentClassName + "setting none"<<std::endl;
+  //std::cout<<currentClassName + "setting none"<<std::endl;
 }
 
 void TypeCheck::visitIdentifierNode(IdentifierNode* node) {
+  if (isVarOf(node->name, currentClassName, classTable)){
+    VariableInfo vi = getVIForMember(node->name, currentClassName, classTable);
+    node->basetype = vi.type.baseType;
+    if (node->basetype == bt_object)
+      node->objectClassName = vi.type.objectClassName;
+  }else if (currentVariableTable!=NULL && isVarOfCurClass(node->name, currentVariableTable, classTable, currentClassName)){
+    node->basetype = (*currentVariableTable)[node->name].type.baseType;
+    if (node->basetype == bt_object)
+      node->objectClassName = (*currentVariableTable)[node->name].type.objectClassName;
+  }
   
   //print(*classTable);
 }
