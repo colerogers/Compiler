@@ -694,13 +694,15 @@ void TypeCheck::visitMemberAccessNode(MemberAccessNode* node) {
   node->visit_children(this);
   VariableInfo vi;
   std::cout<<"In member access"<<std::endl;
-  if (isVar(node->identifier_1->name, currentVariableTable)){
+  if (isVarOfCurClass(node->identifier_1->name, currentVariableTable, classTable, currentClassName)){
     std::cout<<"In if"<<std::endl;
     VariableInfo vi = (*currentVariableTable)[node->identifier_1->name];
     if (IsAClass(vi.type.objectClassName, classTable)){
       std::cout<<"In if"<<std::endl;
       if (!isVarOf(node->identifier_2->name, vi.type.objectClassName, classTable))
-	typeError(undefined_member);
+	      typeError(undefined_member);
+      node->basetype = node->identifier_2->basetype;
+      node->objectClassName = node->identifier_2->objectClassName;
       std::cout<<"after if"<<std::endl;
     }else
       typeError(undefined_class);
@@ -716,6 +718,7 @@ void TypeCheck::visitMemberAccessNode(MemberAccessNode* node) {
 
   //VariableTable *vt = (*classTable)[vi.type.objectClassName].members;
   //node->basetype = (*vt)[node->identifier_2->name].type.baseType;
+  /*
   std::cout<<"before"<<std::endl;
   VariableTable *vt = (*classTable)[vi.type.objectClassName].members;  //.members->at(node->identifier_2->name).type.baseType;
 
@@ -728,7 +731,9 @@ void TypeCheck::visitMemberAccessNode(MemberAccessNode* node) {
   }
   
   delete vt;
+  */
   std::cout<<"after"<<std::endl;
+  
 }
 
 void TypeCheck::visitVariableNode(VariableNode* node) {
