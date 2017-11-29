@@ -456,6 +456,7 @@ void TypeCheck::visitAssignmentNode(AssignmentNode* node) {
 	typeError(not_object);
       }
     }else{
+      
       typeError(undefined_variable);
     }
 
@@ -465,6 +466,7 @@ void TypeCheck::visitAssignmentNode(AssignmentNode* node) {
     // check if type of a is equal to type of expr
     // check if a is vaild class or int or bool
     if (!isVarOfCurClass(node->identifier_1->name, currentVariableTable, classTable, currentClassName)){
+      
       typeError(undefined_variable);
     }
     //if (node->identifier_1->basetype != node->expression->basetype)
@@ -740,7 +742,6 @@ void TypeCheck::visitMethodCallNode(MethodCallNode* node) {
   if (node->identifier_2 != NULL){
     // a.b(stuff)
     if (!isVarOfCurClass(node->identifier_1->name, currentVariableTable, classTable, currentClassName)){
-
       typeError(undefined_variable);
     }
 
@@ -810,10 +811,12 @@ void TypeCheck::visitMemberAccessNode(MemberAccessNode* node) {
   node->visit_children(this);
   
   //std::cout<<"In member access"<<std::endl;
-  if (isVarOfCurClass(node->identifier_1->name, currentVariableTable, classTable, currentClassName)){
+  if (isVarOfCurClass(node->identifier_1->name, currentVariableTable, classTable, currentClassName)||isVarOf(node->identifier_1->name, currentClassName, classTable)){
     //std::cout<<"In if"<<std::endl;
     VariableInfo vi;
-    if ((*currentVariableTable).count(node->identifier_1->name)==1)
+    if (isVarOf(node->identifier_1->name, currentClassName, classTable)){
+      vi = getVIForMember(node->identifier_1->name, currentClassName, classTable);
+    }else if ((*currentVariableTable).count(node->identifier_1->name)==1)
       vi = (*currentVariableTable)[node->identifier_1->name];
     else
       vi = (*classTable)[currentClassName].members->at(node->identifier_1->name);
@@ -849,8 +852,9 @@ void TypeCheck::visitVariableNode(VariableNode* node) {
     node->objectClassName = node->identifier->objectClassName;
   
   if (!isVarOfCurClass(node->identifier->name, currentVariableTable, classTable, currentClassName)){
-    if (!isVarOf(node->identifier->name, currentClassName, classTable))
+    if (!isVarOf(node->identifier->name, currentClassName, classTable)){
       typeError(undefined_variable);
+    }
     //std::cout<<"here"<<std::endl;
     //std::cout<<node->identifier->name<<std::endl;
     
