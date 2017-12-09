@@ -112,7 +112,28 @@ void CodeGenerator::visitCallNode(CallNode* node) {
 }
 
 void CodeGenerator::visitIfElseNode(IfElseNode* node) {
-  node->visit_children(this);
+  //node->visit_children(this);
+
+  node->expression->accept(this); // get the expression value and push it to stack
+  std::string num = std::to_string(nextLabel()); 
+  p "\tpop %eax" e;
+  p "\tmov $0, %ebx" e;
+  p "\tcmp %eax, %ebx" e;
+  p "\tje skip_if_" + num e;
+  // if block
+  if (!node->statement_list_1->empty()){
+    for (auto i=node->statement_list_1->begin(); i!=node->statement_list_1->end(); ++i){
+      (*i)->accept(this);
+    }
+  }
+  p "\tskip_if_" + num e;
+  // else
+  if (!node->statement_list_2->empty()){
+    // code in else
+    for (auto i=node->statement_list_2->begin(); i!=node->statement_list_2->end(); ++i){
+      (*i)->accept(this); // visit each statement node
+    }
+  }
 }
 
 void CodeGenerator::visitWhileNode(WhileNode* node) {
