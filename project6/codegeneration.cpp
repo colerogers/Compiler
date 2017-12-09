@@ -53,7 +53,8 @@ void CodeGenerator::visitMethodBodyNode(MethodBodyNode* node) {
   /*  p " push $" + std::to_string(currentMethodInfo.localsSize) e;
   p " pop %eax" e;
   p " sub %eax, %esp" e; // moves the stack pointer down by local var size */
-  //p " sub " + std::to_string(currentMethodInfo.localsSize) + ", %esp" e;
+
+  p " sub $" + std::to_string(currentMethodInfo.localsSize) + ", %esp" e;
   // save callee-save registers
   p " push %edi" e;
   p " push %esi" e;
