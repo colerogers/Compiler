@@ -89,7 +89,7 @@ void CodeGenerator::visitReturnStatementNode(ReturnStatementNode* node) {
 
 void CodeGenerator::visitAssignmentNode(AssignmentNode* node) {
   node->visit_children(this);
-  
+  p "\t # Assignment Node" e;
   p "\tpop %eax" e;
   if (node->identifier_2 != NULL){
     // a.b = ...
@@ -115,7 +115,8 @@ void CodeGenerator::visitIfElseNode(IfElseNode* node) {
   //node->visit_children(this);
 
   node->expression->accept(this); // get the expression value and push it to stack
-  std::string num = std::to_string(nextLabel()); 
+  std::string num = std::to_string(nextLabel());
+  p " # If Else Node" e;
   p "\tpop %eax" e;
   p "\tmov $0, %ebx" e;
   p "\tcmp %eax, %ebx" e;
@@ -139,7 +140,26 @@ void CodeGenerator::visitIfElseNode(IfElseNode* node) {
 }
 
 void CodeGenerator::visitWhileNode(WhileNode* node) {
-  node->visit_children(this);
+  //node->visit_children(this);
+
+  std::string num = std::to_string(nextLabel());
+
+  p " # While Node" e;
+  p "while_" + num + ":" e;
+  node->expression->accept(this); // need to keep updating variables
+  p "\tpop %eax" e;
+  p "\tmov $0, %ebx" e;
+  p "\tcmp %eax, %ebx" e;
+  p "\tje after_while_" + num e;
+  // while expression is true
+  if (!node->statement_list->empty()){
+    for (auto i=node->statement_list->begin(); i!=node->statement_list->end(); ++i){
+      (*i)->accept(this); // visit each statement node
+    }
+  }
+  p "\tjmp while_" + num e;
+  p "after_while_" + num + ":" e;
+  
 }
 
 void CodeGenerator::visitPrintNode(PrintNode* node) {
@@ -206,7 +226,7 @@ void CodeGenerator::visitGreaterNode(GreaterNode* node) {
   p " # Greater Than" e;
   p "\tpop %ebx" e;
   p "\tpop %eax" e;
-  p "\tcmp %eax, %ebx" e;
+  p "\tcmp %ebx, %eax" e;
   p "\tjg greater_than_" + num e;
   // not greater than
   p "\tpush $0" e;
@@ -225,7 +245,7 @@ void CodeGenerator::visitGreaterEqualNode(GreaterEqualNode* node) {
   p " # Greater Than Equal" e;
   p "\tpop %ebx" e;
   p "\tpop %eax" e;
-  p "\tcmp %eax, %ebx" e;
+  p "\tcmp %ebx, %eax" e;
   p "\tjge greater_than_equal_" + num e;
   // not greater than or equal
   p "\tpush $0" e;
@@ -264,14 +284,14 @@ void CodeGenerator::visitAndNode(AndNode* node) {
   p "\tpop %ebx" e;
   p "\tpop %eax" e;
   p "\tcmp %eax, %ebx" e;
-  p "\tje equal_" + num e;
+  p "\tje and_equal_" + num e;
   // not equal
   p "\tpush $0" e;
-  p "\tjmp after_equal_" + num e;
-  p "equal_" + num + ":" e;
+  p "\tjmp after_and_equal_" + num e;
+  p "and_equal_" + num + ":" e;
   // equal
   p "\tpush $1" e;
-  p "after_equal_" + num + ":" e;
+  p "after_and_equal_" + num + ":" e;
 }
 
 void CodeGenerator::visitOrNode(OrNode* node) {
@@ -284,16 +304,16 @@ void CodeGenerator::visitOrNode(OrNode* node) {
   p "\tpop %eax" e;
   p "\tmov $1, %ecx" e;
   p "\tcmp %ecx, %ebx" e;
-  p "\tje equal_" + num e;
+  p "\tje or_equal_" + num e;
   // first wasn't true, try second
   p "\tcmp %ecx, %eax" e;
-  p "\tje equal_" + num e;
+  p "\tje or_equal_" + num e;
   // both weren't true, set 0 and go past
   p "\tpush $0" e;
-  p "\tjmp after_equal_" + num e;
-  p "equal_" + num + ":" e;
+  p "\tjmp after_or_equal_" + num e;
+  p "or_equal_" + num + ":" e;
   p "\tpush $1" e;
-  p "after_equal_" + num + ":" e;
+  p "after_or_equal_" + num + ":" e;
 }
 
 void CodeGenerator::visitNotNode(NotNode* node) {
