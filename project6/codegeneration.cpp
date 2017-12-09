@@ -198,6 +198,21 @@ void CodeGenerator::visitDivideNode(DivideNode* node) {
 
 void CodeGenerator::visitGreaterNode(GreaterNode* node) {
   node->visit_children(this);
+
+  std::string num = std::to_string(nextLabel());
+
+  p " # Greater Than" e;
+  p "\tpop %ebx" e;
+  p "\tpop %eax" e;
+  p "\tcmp %eax, %ebx" e;
+  p "\tjg greater_than_" + num e;
+  // not greater than
+  p "\tpush $0" e;
+  p "\tj after_greater_than_" + num e;
+  p "greater_than_" + num + ":" e;
+  // greater than
+  p "\tpush $1" e;
+  p "after_greater_than_" + num + ":" e;
 }
 
 void CodeGenerator::visitGreaterEqualNode(GreaterEqualNode* node) {
@@ -206,6 +221,21 @@ void CodeGenerator::visitGreaterEqualNode(GreaterEqualNode* node) {
 
 void CodeGenerator::visitEqualNode(EqualNode* node) {
   node->visit_children(this);
+
+  std::string num = std::to_string(nextLabel());
+
+  p " # Equal" e;
+  p "\tpop %ebx" e;
+  p "\tpop %eax" e;
+  p "\tcmp %eax, %ebx" e;
+  p "\tje equal_" + num e;
+  // not equal
+  p "\tpush $0" e;
+  p "\tj after_equal_" + num e;
+  p "equal_" + num + ":" e;
+  // equal
+  p "\tpush $1" e;
+  p "after_equal_" + num + ":" e;
 }
 
 void CodeGenerator::visitAndNode(AndNode* node) {
