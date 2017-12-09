@@ -90,17 +90,17 @@ void CodeGenerator::visitReturnStatementNode(ReturnStatementNode* node) {
 void CodeGenerator::visitAssignmentNode(AssignmentNode* node) {
   node->visit_children(this);
   
-  p "\tpop %ebx" e;
+  p "\tpop %eax" e;
   if (node->identifier_2 != NULL){
     // a.b = ...
   }else {
     // a = ...
     // check local var, global var, or inherited var
     if (currentMethodInfo.variables->count(node->identifier_1->name) == 1){
-      p "\tpush $" + std::to_string(currentMethodInfo.variables->at(node->identifier_1->name).offset) + "%(ebp)" e;
+      p "\tmov %eax, " + std::to_string(currentMethodInfo.variables->at(node->identifier_1->name).offset) + "(%ebp)" e;
     }else if (currentClassInfo.members->count(node->identifier_1->name) == 1){
       // TODO: might have to change how offset works
-      p "\tpush $" + std::to_string(currentClassInfo.members->at(node->identifier_1->name).offset) + "%(ebp)" e;
+      p "\tmov %eax, " + std::to_string(currentClassInfo.members->at(node->identifier_1->name).offset) + "(%ebp)" e;
     }else{
       // TODO: implement inheritence
     }
@@ -158,7 +158,7 @@ void CodeGenerator::visitTimesNode(TimesNode* node) {
   p " # Times" e;
   p "\tpop %ebx" e;
   p "\tpop %eax" e;
-  p "\tsub %ebx, %eax" e;
+  p "\timul %ebx, %eax" e;
   p "\tpush %eax" e;
 }
 
@@ -228,10 +228,10 @@ void CodeGenerator::visitVariableNode(VariableNode* node) {
   if (!isParam){
     if (currentMethodInfo.variables->count(node->identifier->name) == 1){
       // it's a local variable
-      p "\tpush $" + std::to_string(currentMethodInfo.variables->at(node->identifier->name).offset) + "(%ebp)" e;
+      p "\tpush " + std::to_string(currentMethodInfo.variables->at(node->identifier->name).offset) + "(%ebp)" e;
     } else if (currentClassInfo.members->count(node->identifier->name) == 1){
       // it's a global variable
-      p "\tpush $" + std::to_string(currentClassInfo.members->at(node->identifier->name).offset) + "(%ebp)" e;
+      p "\tpush " + std::to_string(currentClassInfo.members->at(node->identifier->name).offset) + "(%ebp)" e;
     }else{
       // search for it in all super classes
     }
