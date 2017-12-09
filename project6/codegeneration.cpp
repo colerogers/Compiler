@@ -371,6 +371,14 @@ void CodeGenerator::visitVariableNode(VariableNode* node) {
       p "\tpush " + std::to_string(currentClassInfo.members->at(node->identifier->name).offset) + "(%ebp)" e;
     }else{
       // search for it in all super classes
+      std::string sClassName = currentClassInfo.superClassName;
+      while (!sClassName.empty()){
+	if ((*classTable)[sClassName].members->count(node->identifier->name)){
+	  p "\tpush" + std::to_string((*classTable)[sClassName].members->at(node->identifier->name).offset) + "(%ebp)" e;
+	  break;
+	}
+	sClassName = (*classTable)[sClassName].superClassName;
+      }
     }
   }
 }
