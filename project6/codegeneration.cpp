@@ -126,7 +126,7 @@ void CodeGenerator::visitIfElseNode(IfElseNode* node) {
       (*i)->accept(this);
     }
   }
-  p "\tskip_if_" + num e;
+  p "skip_if_" + num + ":" e;
   // else
   if (!node->statement_list_2->empty()){
     // code in else
