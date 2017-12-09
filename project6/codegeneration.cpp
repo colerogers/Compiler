@@ -208,7 +208,7 @@ void CodeGenerator::visitGreaterNode(GreaterNode* node) {
   p "\tjg greater_than_" + num e;
   // not greater than
   p "\tpush $0" e;
-  p "\tj after_greater_than_" + num e;
+  p "\tjmp after_greater_than_" + num e;
   p "greater_than_" + num + ":" e;
   // greater than
   p "\tpush $1" e;
@@ -231,7 +231,7 @@ void CodeGenerator::visitEqualNode(EqualNode* node) {
   p "\tje equal_" + num e;
   // not equal
   p "\tpush $0" e;
-  p "\tj after_equal_" + num e;
+  p "\tjmp after_equal_" + num e;
   p "equal_" + num + ":" e;
   // equal
   p "\tpush $1" e;
