@@ -152,11 +152,11 @@ void CodeGenerator::visitDivideNode(DivideNode* node) {
 
   // TODO: might have to change this ordering
   p " # Divide" e;
-  p "\tpop %eax" e; // numerator
-  p "\tcdq" e;
   p "\tpop %ebx" e; // denominator
-  p "\tidiv %ebx" e;
-  p "\tpush %eax" e;
+  p "\tpop %eax" e; // numerator
+  p "\tcdq" e; // extend eax to 64 bits
+  p "\tidiv %ebx" e; // divide eax by this
+  p "\tpush %eax" e; // place result onto stack
 }
 
 void CodeGenerator::visitGreaterNode(GreaterNode* node) {
