@@ -1,149 +1,241 @@
 #include "codegeneration.hpp"
 
+#define p std::cout<<
+#define e <<std::endl
 // CodeGenerator Visitor Functions: These are the functions
 // you will complete to generate the x86 assembly code. Not
 // all functions must have code, many may be left empty.
 
 void CodeGenerator::visitProgramNode(ProgramNode* node) {
-    // WRITEME: Replace with code if necessary
+  // set up all the assembly stuff from project description
+  p " .data" e;
+  p " printstr: .asciz \"%d\\n\"" e;
+  p "" e;
+  p " .text" e;
+  p " .globl Main_main\n" e;
+  
+  node->visit_children(this);
+
+  // exit the program
+  // TODO: maybe through a syscall
 }
 
 void CodeGenerator::visitClassNode(ClassNode* node) {
-    // WRITEME: Replace with code if necessary
+  currentClassName = node->identifier_1->name;
+  currentClassInfo = (*classTable)[currentClassName];
+  
+  node->visit_children(this);
 }
 
 void CodeGenerator::visitMethodNode(MethodNode* node) {
-    // WRITEME: Replace with code if necessary
+  currentMethodName = node->identifier->name;
+  currentMethodInfo = currentClassInfo.methods->at(currentMethodName);
+  
+  p currentClassName + "_" + currentMethodName + ":" e;
+
+  // pre-call sequence
+  // save caller-save registers, push args to stack, push ret addr
+
+  // TODO: possibly change this to handle the method prolouge
+  node->visit_children(this);
+
+  // 
+
+
 }
 
 void CodeGenerator::visitMethodBodyNode(MethodBodyNode* node) {
-    // WRITEME: Replace with code if necessary
+  p " \n#Method Prolouge" e;
+  p " push %ebp" e;         // save ebp
+  p " mov %esp, %ebp" e;    // set ebp
+  // set the esp ??
+  //p ""e;
+  p " push $" + currentMethodInfo.localsSize e;
+  p " pop %eax" e;
+  p " sub %eax, %esp" e; // moves the stack pointer down by local var size
+  // save callee-save registers
+  p " push %edi" e;
+  p " push %esi" e;
+  p " push %ebx" e;
+  
+  node->visit_children(this); // is the method body
+
+  p " \n#Method Epilogue" e;
+  p " pop %ebx" e;
+  p " pop %esi" e;
+  p " pop %edi" e;
+  p " mov %ebp, %esp" e;
+  p " pop %ebp" e;
+  p " ret" e;  // using what is in %eax
 }
 
 void CodeGenerator::visitParameterNode(ParameterNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void CodeGenerator::visitDeclarationNode(DeclarationNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void CodeGenerator::visitReturnStatementNode(ReturnStatementNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
+
+  // adding the return value to the eax register
+  p " pop %eax" e;
 }
 
 void CodeGenerator::visitAssignmentNode(AssignmentNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void CodeGenerator::visitCallNode(CallNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void CodeGenerator::visitIfElseNode(IfElseNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void CodeGenerator::visitWhileNode(WhileNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void CodeGenerator::visitPrintNode(PrintNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
+
+  p " push $printstr" e;
+  p " call printf" e;
+  p " add $8, %esp" e; // add 8 since we pushed a string 
 }
 
 void CodeGenerator::visitDoWhileNode(DoWhileNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void CodeGenerator::visitPlusNode(PlusNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
+  
+  p " # Plus" e;
+  p " pop %ebx" e;
+  p " pop %eax" e;
+  p " add %ebx, %eax" e;
+  p " push %eax" e;
+  
 }
 
 void CodeGenerator::visitMinusNode(MinusNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
+
+  p " # Minus" e;
+  p " pop %ebx" e;
+  p " pop %eax" e;
+  p " sub %ebx, %eax" e;
+  p " push %eax" e;
 }
 
 void CodeGenerator::visitTimesNode(TimesNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
+
+  p " # Times" e;
+  p " pop %ebx" e;
+  p " pop %eax" e;
+  p " sub %ebx, %eax" e;
+  p " push %eax" e;
 }
 
 void CodeGenerator::visitDivideNode(DivideNode* node) {
-    // WRITEME: Replace with code if necessary
+  // ( %edx : %eax ) / operand
+  node->visit_children(this);
+
+  // TODO: might have to change this ordering
+  p " # Divide" e;
+  p " pop %eax" e; // numerator
+  p " cdq" e;
+  p " pop %ebx" e; // denominator
+  p " idiv %ebx" e;
+  p " push %eax" e;
 }
 
 void CodeGenerator::visitGreaterNode(GreaterNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void CodeGenerator::visitGreaterEqualNode(GreaterEqualNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void CodeGenerator::visitEqualNode(EqualNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void CodeGenerator::visitAndNode(AndNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void CodeGenerator::visitOrNode(OrNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void CodeGenerator::visitNotNode(NotNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void CodeGenerator::visitNegationNode(NegationNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void CodeGenerator::visitMethodCallNode(MethodCallNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void CodeGenerator::visitMemberAccessNode(MemberAccessNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void CodeGenerator::visitVariableNode(VariableNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
+
+  // TODO: get correct variable info and allocate the correct space
 }
 
 void CodeGenerator::visitIntegerLiteralNode(IntegerLiteralNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
+
+  p " push $" + std::to_string(node->integer->value) e;
 }
 
 void CodeGenerator::visitBooleanLiteralNode(BooleanLiteralNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
+
+  p " push $" + std::to_string(node->integer->value) e;
 }
 
 void CodeGenerator::visitNewNode(NewNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
+
+  // TODO: add constructor checking and allocate correct space
 }
 
 void CodeGenerator::visitIntegerTypeNode(IntegerTypeNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void CodeGenerator::visitBooleanTypeNode(BooleanTypeNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void CodeGenerator::visitObjectTypeNode(ObjectTypeNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void CodeGenerator::visitNoneNode(NoneNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void CodeGenerator::visitIdentifierNode(IdentifierNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
 
 void CodeGenerator::visitIntegerNode(IntegerNode* node) {
-    // WRITEME: Replace with code if necessary
+  node->visit_children(this);
 }
