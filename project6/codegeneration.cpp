@@ -126,6 +126,7 @@ void CodeGenerator::visitIfElseNode(IfElseNode* node) {
       (*i)->accept(this);
     }
   }
+  p "\tjmp after_if_" + num e;
   p "skip_if_" + num + ":" e;
   // else
   if (!node->statement_list_2->empty()){
@@ -134,6 +135,7 @@ void CodeGenerator::visitIfElseNode(IfElseNode* node) {
       (*i)->accept(this); // visit each statement node
     }
   }
+  p "after_if_" + num + ":" e;
 }
 
 void CodeGenerator::visitWhileNode(WhileNode* node) {
@@ -217,6 +219,21 @@ void CodeGenerator::visitGreaterNode(GreaterNode* node) {
 
 void CodeGenerator::visitGreaterEqualNode(GreaterEqualNode* node) {
   node->visit_children(this);
+
+  std::string num = std::to_string(nextLabel());
+
+  p " # Greater Than Equal" e;
+  p "\tpop %ebx" e;
+  p "\tpop %eax" e;
+  p "\tcmp %eax, %ebx" e;
+  p "\tjge greater_than_equal_" + num e;
+  // not greater than or equal
+  p "\tpush $0" e;
+  p "\tjmp after_greater_than_equal_" + num e;
+  p "greater_than_equal_" + num + ":" e;
+  // greater than or equal
+  p "\tpush $1" e;
+  p "after_greater_than_equal_" + num + ":" e;
 }
 
 void CodeGenerator::visitEqualNode(EqualNode* node) {
@@ -240,14 +257,63 @@ void CodeGenerator::visitEqualNode(EqualNode* node) {
 
 void CodeGenerator::visitAndNode(AndNode* node) {
   node->visit_children(this);
+
+  std::string num = std::to_string(nextLabel());
+
+  p " # And" e;
+  p "\tpop %ebx" e;
+  p "\tpop %eax" e;
+  p "\tcmp %eax, %ebx" e;
+  p "\tje equal_" + num e;
+  // not equal
+  p "\tpush $0" e;
+  p "\tjmp after_equal_" + num e;
+  p "equal_" + num + ":" e;
+  // equal
+  p "\tpush $1" e;
+  p "after_equal_" + num + ":" e;
 }
 
 void CodeGenerator::visitOrNode(OrNode* node) {
   node->visit_children(this);
+
+  std::string num = std::to_string(nextLabel());
+
+  p " # Equal" e;
+  p "\tpop %ebx" e;
+  p "\tpop %eax" e;
+  p "\tmov $1, %ecx" e;
+  p "\tcmp %ecx, %ebx" e;
+  p "\tje equal_" + num e;
+  // first wasn't true, try second
+  p "\tcmp %ecx, %eax" e;
+  p "\tje equal_" + num e;
+  // both weren't true, set 0 and go past
+  p "\tpush $0" e;
+  p "\tjmp after_equal_" + num e;
+  p "equal_" + num + ":" e;
+  p "\tpush $1" e;
+  p "after_equal_" + num + ":" e;
 }
 
 void CodeGenerator::visitNotNode(NotNode* node) {
   node->visit_children(this);
+
+  std::string num = std::to_string(nextLabel());
+
+  p " # Equal" e;
+  p "\tpop %ebx" e;
+  p "\tmov $1, %eax" e;
+  p "\tcmp %eax, %ebx" e;
+  p "\tje not_a_true_" + num e;
+  // change a 0 to a 1
+  p "\tpush $1" e;
+  p "\tjmp after_not_" + num e;
+  p "not_a_true_" + num + ":" e;
+  // change a 1 to a 0
+  p "\tpush $0" e;
+  p "after_not_" + num + ":" e;
+  
 }
 
 void CodeGenerator::visitNegationNode(NegationNode* node) {
