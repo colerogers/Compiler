@@ -199,6 +199,27 @@ void CodeGenerator::visitVariableNode(VariableNode* node) {
   node->visit_children(this);
 
   // TODO: get correct variable info and allocate the correct space
+  // check if param, local var, global var, or inherited var
+  bool isParam = false;
+  /*
+  for (std::list<CompoundType>::iterator i=currentMethodInfo.parameters->begin(); i!=currentMethodInfo.parameters->end(); ++i){
+    if ((*i).)
+      // set var
+      isParam = true;
+  }
+  */
+
+  if (!isParam){
+    if (currentMethodInfo.variables->count(node->identifier->name) == 1){
+      // it's a local variable
+      p "\tpush $" + std::to_string(currentMethodInfo.variables->at(node->identifier->name).offset) + "(%ebp)" e;
+    } else if (currentClassInfo.members->count(node->identifier->name) == 1){
+      // it's a global variable
+      p "\tpush $" = std::to_string(currentClassInfo.members->at(node->identifier->name).offset) + "(%ebp)" e;
+    }else{
+      // search for it in all super classes
+    }
+  }
 }
 
 void CodeGenerator::visitIntegerLiteralNode(IntegerLiteralNode* node) {
