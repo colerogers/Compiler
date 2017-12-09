@@ -50,9 +50,10 @@ void CodeGenerator::visitMethodBodyNode(MethodBodyNode* node) {
   p " mov %esp, %ebp" e;    // set ebp
   // set the esp ??
   //p ""e;
-  p " push $" + currentMethodInfo.localsSize e;
+  /*  p " push $" + std::to_string(currentMethodInfo.localsSize) e;
   p " pop %eax" e;
-  p " sub %eax, %esp" e; // moves the stack pointer down by local var size
+  p " sub %eax, %esp" e; // moves the stack pointer down by local var size */
+  //p " sub " + std::to_string(currentMethodInfo.localsSize) + ", %esp" e;
   // save callee-save registers
   p " push %edi" e;
   p " push %esi" e;
@@ -105,7 +106,7 @@ void CodeGenerator::visitPrintNode(PrintNode* node) {
 
   p " push $printstr" e;
   p " call printf" e;
-  p " add $8, %esp" e; // add 8 since we pushed a string 
+  //p " add $8, %esp" e; // add 8 since we pushed a string 
 }
 
 void CodeGenerator::visitDoWhileNode(DoWhileNode* node) {
