@@ -45,30 +45,31 @@ void CodeGenerator::visitMethodNode(MethodNode* node) {
 }
 
 void CodeGenerator::visitMethodBodyNode(MethodBodyNode* node) {
-  p " \n#Method Prolouge" e;
-  p " push %ebp" e;         // save ebp
-  p " mov %esp, %ebp" e;    // set ebp
+  p "\n # Method Prologue" e;
+  p "\tpush %ebp" e;         // save ebp
+  p "\tmov %esp, %ebp" e;    // set ebp
+
   // set the esp ??
   //p ""e;
   /*  p " push $" + std::to_string(currentMethodInfo.localsSize) e;
   p " pop %eax" e;
   p " sub %eax, %esp" e; // moves the stack pointer down by local var size */
 
-  p " sub $" + std::to_string(currentMethodInfo.localsSize) + ", %esp" e;
+  p "\tsub $" + std::to_string(currentMethodInfo.localsSize) + ", %esp" e;
   // save callee-save registers
-  p " push %edi" e;
-  p " push %esi" e;
-  p " push %ebx" e;
+  p "\tpush %edi" e;
+  p "\tpush %esi" e;
+  p "\tpush %ebx" e;
   
   node->visit_children(this); // is the method body
 
-  p " \n#Method Epilogue" e;
-  p " pop %ebx" e;
-  p " pop %esi" e;
-  p " pop %edi" e;
-  p " mov %ebp, %esp" e;
-  p " pop %ebp" e;
-  p " ret" e;  // using what is in %eax
+  p "\n # Method Epilogue" e;
+  p "\tpop %ebx" e;
+  p "\tpop %esi" e;
+  p "\tpop %edi" e;
+  p "\tmov %ebp, %esp" e;
+  p "\tpop %ebp" e;
+  p "\tret" e;  // using what is in %eax
 }
 
 void CodeGenerator::visitParameterNode(ParameterNode* node) {
@@ -83,7 +84,7 @@ void CodeGenerator::visitReturnStatementNode(ReturnStatementNode* node) {
   node->visit_children(this);
 
   // adding the return value to the eax register
-  p " pop %eax" e;
+  p "\tpop %eax" e;
 }
 
 void CodeGenerator::visitAssignmentNode(AssignmentNode* node) {
@@ -105,8 +106,8 @@ void CodeGenerator::visitWhileNode(WhileNode* node) {
 void CodeGenerator::visitPrintNode(PrintNode* node) {
   node->visit_children(this);
 
-  p " push $printstr" e;
-  p " call printf" e;
+  p "\tpush $printstr" e;
+  p "\tcall printf" e;
   //p " add $8, %esp" e; // add 8 since we pushed a string 
 }
 
@@ -118,10 +119,10 @@ void CodeGenerator::visitPlusNode(PlusNode* node) {
   node->visit_children(this);
   
   p " # Plus" e;
-  p " pop %ebx" e;
-  p " pop %eax" e;
-  p " add %ebx, %eax" e;
-  p " push %eax" e;
+  p "\tpop %ebx" e;
+  p "\tpop %eax" e;
+  p "\tadd %ebx, %eax" e;
+  p "\tpush %eax" e;
   
 }
 
@@ -129,20 +130,20 @@ void CodeGenerator::visitMinusNode(MinusNode* node) {
   node->visit_children(this);
 
   p " # Minus" e;
-  p " pop %ebx" e;
-  p " pop %eax" e;
-  p " sub %ebx, %eax" e;
-  p " push %eax" e;
+  p "\tpop %ebx" e;
+  p "\tpop %eax" e;
+  p "\tsub %ebx, %eax" e;
+  p "\tpush %eax" e;
 }
 
 void CodeGenerator::visitTimesNode(TimesNode* node) {
   node->visit_children(this);
 
   p " # Times" e;
-  p " pop %ebx" e;
-  p " pop %eax" e;
-  p " sub %ebx, %eax" e;
-  p " push %eax" e;
+  p "\tpop %ebx" e;
+  p "\tpop %eax" e;
+  p "\tsub %ebx, %eax" e;
+  p "\tpush %eax" e;
 }
 
 void CodeGenerator::visitDivideNode(DivideNode* node) {
@@ -151,11 +152,11 @@ void CodeGenerator::visitDivideNode(DivideNode* node) {
 
   // TODO: might have to change this ordering
   p " # Divide" e;
-  p " pop %eax" e; // numerator
-  p " cdq" e;
-  p " pop %ebx" e; // denominator
-  p " idiv %ebx" e;
-  p " push %eax" e;
+  p "\tpop %eax" e; // numerator
+  p "\tcdq" e;
+  p "\tpop %ebx" e; // denominator
+  p "\tidiv %ebx" e;
+  p "\tpush %eax" e;
 }
 
 void CodeGenerator::visitGreaterNode(GreaterNode* node) {
@@ -203,13 +204,13 @@ void CodeGenerator::visitVariableNode(VariableNode* node) {
 void CodeGenerator::visitIntegerLiteralNode(IntegerLiteralNode* node) {
   node->visit_children(this);
 
-  p " push $" + std::to_string(node->integer->value) e;
+  p "\tpush $" + std::to_string(node->integer->value) e;
 }
 
 void CodeGenerator::visitBooleanLiteralNode(BooleanLiteralNode* node) {
   node->visit_children(this);
 
-  p " push $" + std::to_string(node->integer->value) e;
+  p "\tpush $" + std::to_string(node->integer->value) e;
 }
 
 void CodeGenerator::visitNewNode(NewNode* node) {
