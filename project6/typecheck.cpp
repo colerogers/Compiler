@@ -753,8 +753,10 @@ void TypeCheck::visitMethodCallNode(MethodCallNode* node) {
     
     if (IsAClass(vi.type.objectClassName, classTable)){
 
-      if (!isMethodOf(node->identifier_2->name, vi.type.objectClassName, classTable))
+      if (!isMethodOf(node->identifier_2->name, vi.type.objectClassName, classTable)){
+
 	typeError(undefined_method);
+      }
 
       MethodInfo mi = getMIForMethod(node->identifier_2->name, vi.type.objectClassName, classTable);
 
@@ -780,8 +782,10 @@ void TypeCheck::visitMethodCallNode(MethodCallNode* node) {
     }
   }else{
     // a(stuff)
-    if (!isMethod(node->identifier_1->name, currentMethodTable))
+    if (!isMethod(node->identifier_1->name, currentMethodTable)){
+
       typeError(undefined_method);
+    }
 
     //check sizes of lists
     if ((*currentMethodTable)[node->identifier_1->name].parameters->size() != node->expression_list->size()){
@@ -880,14 +884,14 @@ void TypeCheck::visitNewNode(NewNode* node) {
   if (!IsAClass(node->identifier->name, classTable))
     typeError(undefined_class);
 
-  if ((*classTable)[node->identifier->name].methods->count(node->identifier->name) != 1)
-    typeError(undefined_method);
-
   
-  if ((*classTable)[node->identifier->name].methods->at(node->identifier->name).parameters->size() != node->expression_list->size()){
+  if ((*classTable)[node->identifier->name].methods->count(node->identifier->name) != 0){
+      
+    if ((*classTable)[node->identifier->name].methods->at(node->identifier->name).parameters->size() != node->expression_list->size()){
   
-    typeError(argument_number_mismatch);
-  }
+      typeError(argument_number_mismatch);
+    }
+  
   
   /*  
   if (!isMethodOf(node->identifier->name, node->identifier->name, classTable))
@@ -922,6 +926,11 @@ void TypeCheck::visitNewNode(NewNode* node) {
 
   node->basetype = bt_object;
   node->objectClassName = (*classTable)[node->identifier->name].methods->at(node->identifier->name).returnType.objectClassName;
+  }else{
+    node->basetype = bt_object;
+    node->objectClassName = node->identifier->name;
+  }
+  
   //node->objectClassName = mi.returnType.objectClassName;
   //delete mt, params;
 }

@@ -37,8 +37,8 @@ void CodeGenerator::visitMethodNode(MethodNode* node) {
   // save caller-save registers, push args to stack, push ret addr
 
   // TODO: possibly change this to handle the method prolouge
-  node->visit_children(this);
-
+  //node->visit_children(this);
+  node->methodbody->accept(this); // idk
   // 
 
 
@@ -89,20 +89,42 @@ void CodeGenerator::visitReturnStatementNode(ReturnStatementNode* node) {
 
 void CodeGenerator::visitAssignmentNode(AssignmentNode* node) {
   node->visit_children(this);
+
+  int localOff, memOff;
+  
   p "\t # Assignment Node" e;
   p "\tpop %eax" e;
   if (node->identifier_2 != NULL){
     // a.b = ...
+    if (currentMethodInfo.variables->count(node->identifier_1->name) != 0){
+      // declared in current method
+      localOff = currentMethodInfo.variables->at(node->identifier_1->name).offset;
+      memOff = (*classTable)[currentMethodInfo.variables->at(node->identifier_1->name).type.objectClassName].members->at(node->identifier_2->name).offset;
+      p "mov " + std::to_string(localOff) + "(%ebp), %ebx" e;
+      p "mov %eax, " + std::to_string(memOff) + "(%ebx)" e;
+      
+    }else if (currentClassInfo.members->count(node->identifier_1->name) != 0){
+      // declared in current class
+      localOff = currentClassInfo.members->at(node->identifier_1->name).offset;
+      memOff = (*classTable)[currentClassInfo.members->at(node->identifier_1->name).type.objectClassName].members->at(node->identifier_2->name).offset;
+      p "mov 8(%ebp), %ebx" e;
+      p "mov " + std::to_string(localOff) + "(%ebx), %ebx" e;
+      p "mov %eax, " + std::to_string(memOff) + "(%ebx)" e;
+      
+    }else {
+      // TODO: implement inheritance
+    }
   }else {
     // a = ...
     // check local var, global var, or inherited var
-    if (currentMethodInfo.variables->count(node->identifier_1->name) == 1){
+    if (currentMethodInfo.variables->count(node->identifier_1->name) != 0){
       p "\tmov %eax, " + std::to_string(currentMethodInfo.variables->at(node->identifier_1->name).offset) + "(%ebp)" e;
-    }else if (currentClassInfo.members->count(node->identifier_1->name) == 1){
+    }else if (currentClassInfo.members->count(node->identifier_1->name) != 0){
       // TODO: might have to change how offset works
       p "\tmov %eax, " + std::to_string(currentClassInfo.members->at(node->identifier_1->name).offset) + "(%ebp)" e;
     }else{
-      // TODO: implement inheritence
+      // TODO: implement inheritance
+      
     }
   }
 }
@@ -171,7 +193,26 @@ void CodeGenerator::visitPrintNode(PrintNode* node) {
 }
 
 void CodeGenerator::visitDoWhileNode(DoWhileNode* node) {
-  node->visit_children(this);
+  //node->visit_children(this);
+
+  std::string num = std::to_string(nextLabel());
+
+  p " # Do While Node" e;
+  p "do_while_" + num + ":" e;
+  // while block
+  if (!node->statement_list->empty()){
+    for (auto i=node->statement_list->begin(); i!=node->statement_list->end(); ++i){
+      (*i)->accept(this); // visit each statement node
+    }
+  }
+
+  node->expression->accept(this); // need to keep updating variables
+  p "\tpop %eax" e;
+  p "\tmov $0, %ebx" e;
+  p "\tcmp %eax, %ebx" e;
+  p "\tje after_do_while_" + num e;
+  p "\tjmp do_while_" + num e;  
+  p "after_do_while_" + num + ":" e;
 }
 
 void CodeGenerator::visitPlusNode(PlusNode* node) {
@@ -338,14 +379,169 @@ void CodeGenerator::visitNotNode(NotNode* node) {
 
 void CodeGenerator::visitNegationNode(NegationNode* node) {
   node->visit_children(this);
+
+  std::string num = std::to_string(nextLabel());
+
+  //TODO: might need to change
+  p " # Negation" e;
+  p "\tpop %ebx" e;
+  p "\txor %eax, %eax" e;
+  p "\tsub %eax, %ebx" e;
+  p "\tpush %ebx" e;
+  
 }
 
 void CodeGenerator::visitMethodCallNode(MethodCallNode* node) {
-  node->visit_children(this);
+  // saving the caller-save registers
+  //p "push %eax" e;
+  //p "push %ecx" e;
+  //p "push %edx" e;
+  
+
+  
+  std::string cName;
+
+  int localOff, memOff;
+  int args = 0;
+  if (node->expression_list != NULL){
+    for (auto i=node->expression_list->rbegin(); i!=node->expression_list->rend(); ++i){
+      (*i)->accept(this);
+      args++;
+    }
+  }
+
+  if (node->identifier_2 != NULL){
+    // a.b()
+    // check a's methods
+    
+    if (currentMethodInfo.variables->count(node->identifier_1->name) != 0){
+      // a is declared in the current method
+      localOff = currentMethodInfo.variables->at(node->identifier_1->name).offset;
+      p "push " + std::to_string(localOff) + "(%ebp)" e;
+
+      cName = currentMethodInfo.variables->at(node->identifier_1->name).type.objectClassName;
+      
+    }else if (currentClassInfo.members->count(node->identifier_1->name) != 0){
+      // a declared in current class
+      localOff = currentClassInfo.members->at(node->identifier_1->name).offset;
+      p "mov 8(%ebp), %ebx" e;
+      p "push " + std::to_string(localOff) + "(%ebx)" e;
+
+      cName = currentClassInfo.members->at(node->identifier_1->name).type.objectClassName;
+      
+    }else{
+      // TODO: inheritance
+    }
+
+    p "call " + cName + "_" + node->identifier_2->name e;
+    if (args > 0)
+      p "add $" + std::to_string(args * 4) + ", %esp" e;
+    p "push %eax" e;
+    
+  }else{
+    // a()
+    if (currentClassInfo.methods->count(node->identifier_1->name)){
+      // in current class
+      cName = currentClassName;
+    }else{
+      // not in current class
+      std::string s = currentClassInfo.superClassName;
+      while (!s.empty()){
+	// check
+	if ((*classTable)[s].methods->count(node->identifier_1->name)){
+	  cName = s;
+	  break;
+	}
+
+	s = (*classTable)[s].superClassName;
+      }
+      
+    }
+    p "push 8(%ebp)" e;
+
+    p "call " + cName + "_" + node->identifier_1->name e;
+    if (args > 0)
+      p "add $" + std::to_string(args * 4 + 4) + ", %esp" e;
+    p "push %eax" e; // return address
+  }
+
+  // remove args and return address from stack
+  //p "pop %ebx" e;
+  if (args > 0)
+    p "sub $" + std::to_string(args * 4) + ", %esp" e;
+  // return value
+  //p "pop %eax" e;
+  // restore caller-save registers
+  //p "pop %edx" e;
+  //p "pop %ecx" e;
+  //p "pop %eax" e;
 }
 
 void CodeGenerator::visitMemberAccessNode(MemberAccessNode* node) {
   node->visit_children(this);
+  // in form of a or a.b
+  int localOff, memOff;
+  std::string cName, mName;
+  
+  if (node->identifier_2 != NULL){
+    // find where node->identifier_1 is declared
+    if (currentMethodInfo.variables->count(node->identifier_1->name) != 0){
+      // declared in the current method
+      localOff = currentMethodInfo.variables->at(node->identifier_1->name).offset;
+      memOff = (*classTable)[currentMethodInfo.variables->at(node->identifier_1->name).type.objectClassName].members->at(node->identifier_2->name).offset;
+
+      p "mov " + std::to_string(localOff) + "(%ebp), %ebx" e;
+      p "mov " + std::to_string(memOff) + "(%ebx), %eax" e;
+      p "push %eax" e;
+
+    }else if (currentClassInfo.members->count(node->identifier_1->name) != 0){
+      // declared in the current class
+      localOff = currentClassInfo.members->at(node->identifier_1->name).offset;
+      memOff = (*classTable)[currentClassInfo.members->at(node->identifier_1->name).type.objectClassName].members->at(node->identifier_2->name).offset;
+      p "mov 8(%ebp), %ebx" e;
+      p "mov " + std::to_string(localOff) + "(%ebx), %ebx" e;
+      p "mov " + std::to_string(memOff) + "(%ebx), %eax" e;
+      p "push %eax" e;
+    }else {
+    // TODO: add inheritance
+    }
+  }else {
+    // a can be cur class or any superclass
+    //cName = node->identifier_1->objectClassName;
+    if (currentClassInfo.members->count(node->identifier_1->name) != 0){
+      // global var
+      cName = currentClassInfo.members->at(node->identifier_1->name).type.objectClassName;
+      localOff = currentClassInfo.members->at(node->identifier_1->name).offset;
+    }else{
+      cName = currentClassName;
+      while((*classTable)[cName].members->count(node->identifier_1->name) == 0)
+	cName = (*classTable)[cName].superClassName;
+      cName = (*classTable)[cName].members->at(node->identifier_1->name).type.objectClassName;
+      localOff = (*classTable)[cName].members->at(node->identifier_1->name).offset;
+    }
+
+    if (currentMethodInfo.variables->count(node->identifier_1->name) != 0){
+      // declared in current method
+      localOff = currentMethodInfo.variables->at(node->identifier_1->name).offset;
+      //memOff = (*classTable)[currentMethodInfo.variables->count(node->identifier_1->name).type.objectClassName].members->at(
+      p "mov " + std::to_string(localOff) + "(%ebp), %ebx" e;
+      //p "mov " + std::to_string(memOff) + "(%ebx), %eax" e;
+      p "push %eax" e;
+    }else if(currentClassInfo.members->count(node->identifier_1->name) != 0){
+      // declared in current class
+      localOff = currentClassInfo.members->at(node->identifier_1->name).offset;
+      p "mov 8(%ebp), %ebx" e;
+      p "mov " + std::to_string(localOff) + "(%ebx), %ebx" e;
+      //p "mov " + std::to_string(memOff) + "(%ebx), %eax" e;
+      p "push %eax" e;
+    }else{
+      // TODO: add inheritance
+    }
+
+  }
+
+  
+  
 }
 
 void CodeGenerator::visitVariableNode(VariableNode* node) {
@@ -368,13 +564,17 @@ void CodeGenerator::visitVariableNode(VariableNode* node) {
       p "\tpush " + std::to_string(currentMethodInfo.variables->at(node->identifier->name).offset) + "(%ebp)" e;
     } else if (currentClassInfo.members->count(node->identifier->name) == 1){
       // it's a global variable
+      // TODO: maybe add stuff?
       p "\tpush " + std::to_string(currentClassInfo.members->at(node->identifier->name).offset) + "(%ebp)" e;
     }else{
       // search for it in all super classes
       std::string sClassName = currentClassInfo.superClassName;
+      int offset = 0;
       while (!sClassName.empty()){
+	// TODO: MAKE OFFSETS BETTER?
 	if ((*classTable)[sClassName].members->count(node->identifier->name)){
-	  p "\tpush" + std::to_string((*classTable)[sClassName].members->at(node->identifier->name).offset) + "(%ebp)" e;
+	  offset += (*classTable)[sClassName].members->at(node->identifier->name).offset;
+	  p "\tpush" + std::to_string(offset) + "(%ebp)" e;
 	  break;
 	}
 	sClassName = (*classTable)[sClassName].superClassName;
@@ -398,7 +598,33 @@ void CodeGenerator::visitBooleanLiteralNode(BooleanLiteralNode* node) {
 void CodeGenerator::visitNewNode(NewNode* node) {
   node->visit_children(this);
 
-  // TODO: add constructor checking and allocate correct space
+  int sizeOfClass = (*classTable)[node->identifier->name].membersSize;
+
+  // check for constructor
+  if ((*classTable)[node->identifier->name].methods->count(node->identifier->name) != 0){
+    // has a constructor
+    int args = 0;
+    if (node->expression_list != NULL){
+      for (auto i=node->expression_list->rbegin(); i!=node->expression_list->rend(); ++i){
+	(*i)->accept(this);
+	args++;
+      }
+      p "\tpush $" + std::to_string(sizeOfClass) e;
+      p "\tcall malloc" e;
+      p "\tadd $4, %esp" e;
+      p "\tpush %eax" e;
+      p "\tcall " + node->identifier->name + "_" + node->identifier->name e;
+      p "add $" + std::to_string(args * 4) + ", %esp" e;
+      p "push %eax" e;
+      
+    }
+  }else{
+    // no constructor
+    p "push $" + std::to_string(sizeOfClass) e;
+    p "call malloc" e;
+    p "add $4, %esp" e;
+    p "push %eax" e;
+  }
 }
 
 void CodeGenerator::visitIntegerTypeNode(IntegerTypeNode* node) {
