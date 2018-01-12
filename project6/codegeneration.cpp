@@ -428,9 +428,6 @@ void CodeGenerator::visitMethodCallNode(MethodCallNode* node) {
       }
       //cName = currentClassInfo.members->at(node->identifier_1->name).type.objectClassName;
       
-    }else{
-      // inheritance
-      
     }
     
     p "call " + cName + "_" + node->identifier_2->name e;
@@ -492,60 +489,41 @@ void CodeGenerator::visitMemberAccessNode(MemberAccessNode* node) {
   
   if (node->identifier_2 != NULL){
     // a.b
-    // find where node->identifier_1 is declared
+    // find where a is declared
     if (currentMethodInfo.variables->count(node->identifier_1->name) != 0){
       // declared in the current method
       localOff = currentMethodInfo.variables->at(node->identifier_1->name).offset;
+      
       memOff = (*classTable)[currentMethodInfo.variables->at(node->identifier_1->name).type.objectClassName].members->at(node->identifier_2->name).offset;
 
       p "mov " + std::to_string(localOff) + "(%ebp), %ebx" e;
       p "mov " + std::to_string(memOff) + "(%ebx), %eax" e;
       p "push %eax" e;
 
-    }else if (currentClassInfo.members->count(node->identifier_1->name) != 0){
+    }else {
       // declared in the current class
       localOff = currentClassInfo.members->at(node->identifier_1->name).offset;
+      
       memOff = (*classTable)[currentClassInfo.members->at(node->identifier_1->name).type.objectClassName].members->at(node->identifier_2->name).offset;
       p "mov 8(%ebp), %ebx" e;
       p "mov " + std::to_string(localOff) + "(%ebx), %ebx" e;
       p "mov " + std::to_string(memOff) + "(%ebx), %eax" e;
       p "push %eax" e;
-    }else {
-    // TODO: add inheritance
     }
   }else {
-    // a can be cur class or any superclass
-    //cName = node->identifier_1->objectClassName;
-    if (currentClassInfo.members->count(node->identifier_1->name) != 0){
-      // global var
-      cName = currentClassInfo.members->at(node->identifier_1->name).type.objectClassName;
-      localOff = currentClassInfo.members->at(node->identifier_1->name).offset;
-    }else{
-      cName = currentClassName;
-      while((*classTable)[cName].members->count(node->identifier_1->name) == 0)
-	cName = (*classTable)[cName].superClassName;
-      cName = (*classTable)[cName].members->at(node->identifier_1->name).type.objectClassName;
-      localOff = (*classTable)[cName].members->at(node->identifier_1->name).offset;
-    }
-
-    if (currentMethodInfo.variables->count(node->identifier_1->name) != 0){
-      // declared in current method
+    // a
+    if (currentMethodInfo.variables->count(node->identifier_1->name) > 0){
+      // a is a local var of the method
       localOff = currentMethodInfo.variables->at(node->identifier_1->name).offset;
-      //memOff = (*classTable)[currentMethodInfo.variables->count(node->identifier_1->name).type.objectClassName].members->at(
       p "mov " + std::to_string(localOff) + "(%ebp), %ebx" e;
-      //p "mov " + std::to_string(memOff) + "(%ebx), %eax" e;
       p "push %eax" e;
-    }else if(currentClassInfo.members->count(node->identifier_1->name) != 0){
-      // declared in current class
+    }else{
+      // a is a global var of the class
       localOff = currentClassInfo.members->at(node->identifier_1->name).offset;
       p "mov 8(%ebp), %ebx" e;
       p "mov " + std::to_string(localOff) + "(%ebx), %ebx" e;
-      //p "mov " + std::to_string(memOff) + "(%ebx), %eax" e;
       p "push %eax" e;
-    }else{
-      // TODO: add inheritance
     }
-
   }
 
   
