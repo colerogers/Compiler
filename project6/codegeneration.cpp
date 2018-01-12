@@ -121,8 +121,6 @@ void CodeGenerator::visitCallNode(CallNode* node) {
 }
 
 void CodeGenerator::visitIfElseNode(IfElseNode* node) {
-  //node->visit_children(this);
-
   node->expression->accept(this); // get the expression value and push it to stack
   std::string num = std::to_string(nextLabel());
   p " # If Else Node" e;
@@ -149,8 +147,6 @@ void CodeGenerator::visitIfElseNode(IfElseNode* node) {
 }
 
 void CodeGenerator::visitWhileNode(WhileNode* node) {
-  //node->visit_children(this);
-
   std::string num = std::to_string(nextLabel());
 
   p " # While Node" e;
@@ -177,7 +173,6 @@ void CodeGenerator::visitPrintNode(PrintNode* node) {
 
   p "\tpush $printstr" e;
   p "\tcall printf" e;
-  //p " add $8, %esp" e; // add 8 since we pushed a string 
 }
 
 void CodeGenerator::visitDoWhileNode(DoWhileNode* node) {
@@ -238,7 +233,6 @@ void CodeGenerator::visitDivideNode(DivideNode* node) {
   // ( %edx : %eax ) / operand
   node->visit_children(this);
 
-  // TODO: might have to change this ordering
   p " # Divide" e;
   p "\tpop %ebx" e; // denominator
   p "\tpop %eax" e; // numerator
@@ -310,17 +304,10 @@ void CodeGenerator::visitAndNode(AndNode* node) {
   std::string num = std::to_string(nextLabel());
 
   p " # And" e;
-  p "\tpop %ebx" e;
   p "\tpop %eax" e;
-  p "\tcmp %eax, %ebx" e;
-  p "\tje and_equal_" + num e;
-  // not equal
-  p "\tpush $0" e;
-  p "\tjmp after_and_equal_" + num e;
-  p "and_equal_" + num + ":" e;
-  // equal
-  p "\tpush $1" e;
-  p "after_and_equal_" + num + ":" e;
+  p "\tpop %ebx" e;
+  p "\tand %ebx, %eax" e;
+  p "\tpush %eax" e;
 }
 
 void CodeGenerator::visitOrNode(OrNode* node) {
@@ -348,21 +335,11 @@ void CodeGenerator::visitOrNode(OrNode* node) {
 void CodeGenerator::visitNotNode(NotNode* node) {
   node->visit_children(this);
 
-  std::string num = std::to_string(nextLabel());
-
-  p " # Equal" e;
+  p "# Not Node" e;
   p "\tpop %ebx" e;
   p "\tmov $1, %eax" e;
-  p "\tcmp %eax, %ebx" e;
-  p "\tje not_a_true_" + num e;
-  // change a 0 to a 1
-  p "\tpush $1" e;
-  p "\tjmp after_not_" + num e;
-  p "not_a_true_" + num + ":" e;
-  // change a 1 to a 0
-  p "\tpush $0" e;
-  p "after_not_" + num + ":" e;
-  
+  p "\txor %eax, %ebx" e;
+  p "\tpush %ebx" e;
 }
 
 void CodeGenerator::visitNegationNode(NegationNode* node) {
@@ -370,12 +347,9 @@ void CodeGenerator::visitNegationNode(NegationNode* node) {
 
   std::string num = std::to_string(nextLabel());
 
-  //TODO: might need to change
   p " # Negation" e;
   p "\tpop %ebx" e;
   p "\tneg %ebx" e;
-  //p "\txor %eax, %eax" e;
-  //p "\tsub %eax, %ebx" e;
   p "\tpush %ebx" e;
   
 }
@@ -387,8 +361,6 @@ void CodeGenerator::visitMethodCallNode(MethodCallNode* node) {
   p "push %eax" e;
   p "push %ecx" e;
   p "push %edx" e;
-  
-
   
   std::string cName;
 
@@ -414,8 +386,7 @@ void CodeGenerator::visitMethodCallNode(MethodCallNode* node) {
       while (!((*classTable)[cName].methods->count(node->identifier_2->name) > 0)){
 	cName = (*classTable)[cName].superClassName;
       }
-      //cName = currentMethodInfo.variables->at(node->identifier_1->name).type.objectClassName;
-      
+            
     }else if (currentClassInfo.members->count(node->identifier_1->name) != 0){
       // a declared in current class
       localOff = currentClassInfo.members->at(node->identifier_1->name).offset;
@@ -426,8 +397,7 @@ void CodeGenerator::visitMethodCallNode(MethodCallNode* node) {
       while (!((*classTable)[cName].methods->count(node->identifier_2->name) > 0)){
 	cName = (*classTable)[cName].superClassName;
       }
-      //cName = currentClassInfo.members->at(node->identifier_1->name).type.objectClassName;
-      
+            
     }
     
     p "call " + cName + "_" + node->identifier_2->name e;
@@ -435,23 +405,10 @@ void CodeGenerator::visitMethodCallNode(MethodCallNode* node) {
     
   }else{
     // a()
-    if (currentClassInfo.methods->count(node->identifier_1->name)){
-      // in current class
-      cName = currentClassName;
-    }else{
-      // not in current class
-      std::string s = currentClassInfo.superClassName;
-      while (!s.empty()){
-	// check
-	if ((*classTable)[s].methods->count(node->identifier_1->name)){
-	  cName = s;
-	  break;
-	}
-
-	s = (*classTable)[s].superClassName;
-      }
-      
-    }
+    cName = currentClassName;
+    while (!((*classTable)[cName].methods->count(node->identifier_1->name) > 0))
+      cName = (*classTable)[cName].superClassName;
+    
     p "push 8(%ebp)" e;
 
     p "call " + cName + "_" + node->identifier_1->name e;
@@ -462,20 +419,14 @@ void CodeGenerator::visitMethodCallNode(MethodCallNode* node) {
   p "#Post-Return Sequence" e;
   // remove args from stack
   p "add $" + std::to_string(args * 4 + 4) + ", %esp" e;
-  //p "pop %ebx" e;
-  //if (args > 0)
-
-  //  p "sub $" + std::to_string(args * 4) + ", %esp" e;
-  // return value
-  
+  // save %eax into %ebx
   p "push %eax" e;
   p "pop %ebx" e;
-
   // restore caller-save registers
   p "pop %edx" e;
   p "pop %ecx" e;
   p "pop %eax" e;
-
+  // push what was in %eax back on to the top of stack
   p "push %ebx" e;
 }
 
@@ -534,28 +485,15 @@ void CodeGenerator::visitVariableNode(VariableNode* node) {
   p "# Variable Node" e;
   node->visit_children(this);
 
-  if (currentMethodInfo.variables->count(node->identifier->name) != 0){
+  if (currentMethodInfo.variables->count(node->identifier->name) > 0){
     // it's a local variable
     p "\tpush " + std::to_string(currentMethodInfo.variables->at(node->identifier->name).offset) + "(%ebp)" e;
     
-  } else if (currentClassInfo.members->count(node->identifier->name) != 0){
+  } else {
     // it's a global variable
     p "\tmov 8(%ebp), %ebx" e;
     p "\tpush " + std::to_string(currentClassInfo.members->at(node->identifier->name).offset) + "(%ebx)" e;
     
-  }else{
-    // search for it in all super classes
-    std::string sClassName = currentClassInfo.superClassName;
-    int offset = 0;
-    while (!sClassName.empty()){
-      // TODO: MAKE OFFSETS BETTER?
-      if ((*classTable)[sClassName].members->count(node->identifier->name)){
-	offset += (*classTable)[sClassName].members->at(node->identifier->name).offset;
-	p "\tpush" + std::to_string(offset) + "(%ebp)" e;
-	break;
-      }
-      sClassName = (*classTable)[sClassName].superClassName;
-    }
   }
   
 }
@@ -577,7 +515,7 @@ void CodeGenerator::visitBooleanLiteralNode(BooleanLiteralNode* node) {
 
 void CodeGenerator::visitNewNode(NewNode* node) {
   p "# New Node" e;
-  //node->visit_children(this);
+  
   node->identifier->accept(this);
 
   int sizeOfClass = (*classTable)[node->identifier->name].membersSize;
