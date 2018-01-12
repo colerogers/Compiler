@@ -15,9 +15,6 @@ void CodeGenerator::visitProgramNode(ProgramNode* node) {
   p " .globl Main_main\n" e;
   
   node->visit_children(this);
-
-  // exit the program
-  // TODO: maybe through a syscall
 }
 
 void CodeGenerator::visitClassNode(ClassNode* node) {
@@ -33,14 +30,7 @@ void CodeGenerator::visitMethodNode(MethodNode* node) {
   
   p currentClassName + "_" + currentMethodName + ":" e;
 
-  // pre-call sequence
-  // save caller-save registers, push args to stack, push ret addr
-
-  // TODO: possibly change this to handle the method prolouge
-  //node->visit_children(this);
-  node->methodbody->accept(this); // idk
-  // 
-
+  node->methodbody->accept(this);
 
 }
 
@@ -57,6 +47,9 @@ void CodeGenerator::visitMethodBodyNode(MethodBodyNode* node) {
   
   node->visit_children(this); // is the method body
 
+  if (currentClassName == currentMethodName)
+    p "mov 8(%ebp), %eax" e;
+
   p "\n # Method Epilogue" e;
   p "\tpop %ebx" e;
   p "\tpop %esi" e;
@@ -67,14 +60,17 @@ void CodeGenerator::visitMethodBodyNode(MethodBodyNode* node) {
 }
 
 void CodeGenerator::visitParameterNode(ParameterNode* node) {
+  p "# Parameter Node" e;
   node->visit_children(this);
 }
 
 void CodeGenerator::visitDeclarationNode(DeclarationNode* node) {
+  p "# Declaration Node" e;
   node->visit_children(this);
 }
 
 void CodeGenerator::visitReturnStatementNode(ReturnStatementNode* node) {
+  p "# ReturnStatement Node" e;
   node->visit_children(this);
 
   // adding the return value to the eax register
@@ -82,11 +78,11 @@ void CodeGenerator::visitReturnStatementNode(ReturnStatementNode* node) {
 }
 
 void CodeGenerator::visitAssignmentNode(AssignmentNode* node) {
+  p "# Assignment Node" e;
   node->visit_children(this);
 
   int localOff, memOff;
   
-  p "\t # Assignment Node" e;
   p "\tpop %eax" e;
   if (node->identifier_2 != NULL){
     // a.b = ...
@@ -105,8 +101,6 @@ void CodeGenerator::visitAssignmentNode(AssignmentNode* node) {
       p "mov " + std::to_string(localOff) + "(%ebx), %ebx" e;
       p "mov %eax, " + std::to_string(memOff) + "(%ebx)" e;
       
-    }else {
-      // TODO: implement inheritance
     }
   }else {
     // a = ...
@@ -118,9 +112,6 @@ void CodeGenerator::visitAssignmentNode(AssignmentNode* node) {
       // global
       p "\tmov 8(%ebp), %ebx" e;
       p "\tmov %eax, " + std::to_string(currentClassInfo.members->at(node->identifier_1->name).offset) + "(%ebx)" e;
-    }else{
-      // TODO: implement inheritance
-      
     }
   }
 }
@@ -181,6 +172,7 @@ void CodeGenerator::visitWhileNode(WhileNode* node) {
 }
 
 void CodeGenerator::visitPrintNode(PrintNode* node) {
+  p "# Print Node" e;
   node->visit_children(this);
 
   p "\tpush $printstr" e;
@@ -381,13 +373,15 @@ void CodeGenerator::visitNegationNode(NegationNode* node) {
   //TODO: might need to change
   p " # Negation" e;
   p "\tpop %ebx" e;
-  p "\txor %eax, %eax" e;
-  p "\tsub %eax, %ebx" e;
+  p "\tneg %ebx" e;
+  //p "\txor %eax, %eax" e;
+  //p "\tsub %eax, %ebx" e;
   p "\tpush %ebx" e;
   
 }
 
 void CodeGenerator::visitMethodCallNode(MethodCallNode* node) {
+  p "# Method Call Node" e;
   p "# Pre-Call Sequence" e;
   // saving the caller-save registers
   p "push %eax" e;
@@ -417,6 +411,10 @@ void CodeGenerator::visitMethodCallNode(MethodCallNode* node) {
       p "push " + std::to_string(localOff) + "(%ebp)" e;
 
       cName = currentMethodInfo.variables->at(node->identifier_1->name).type.objectClassName;
+      while (!((*classTable)[cName].methods->count(node->identifier_2->name) > 0)){
+	cName = (*classTable)[cName].superClassName;
+      }
+      //cName = currentMethodInfo.variables->at(node->identifier_1->name).type.objectClassName;
       
     }else if (currentClassInfo.members->count(node->identifier_1->name) != 0){
       // a declared in current class
@@ -425,9 +423,14 @@ void CodeGenerator::visitMethodCallNode(MethodCallNode* node) {
       p "push " + std::to_string(localOff) + "(%ebx)" e;
 
       cName = currentClassInfo.members->at(node->identifier_1->name).type.objectClassName;
+      while (!((*classTable)[cName].methods->count(node->identifier_2->name) > 0)){
+	cName = (*classTable)[cName].superClassName;
+      }
+      //cName = currentClassInfo.members->at(node->identifier_1->name).type.objectClassName;
       
     }else{
-      // TODO: inheritance
+      // inheritance
+      
     }
     
     p "call " + cName + "_" + node->identifier_2->name e;
@@ -480,12 +483,15 @@ void CodeGenerator::visitMethodCallNode(MethodCallNode* node) {
 }
 
 void CodeGenerator::visitMemberAccessNode(MemberAccessNode* node) {
+  p "# Member Access Node" e;
+  
   node->visit_children(this);
   // in form of a or a.b
   int localOff, memOff;
   std::string cName, mName;
   
   if (node->identifier_2 != NULL){
+    // a.b
     // find where node->identifier_1 is declared
     if (currentMethodInfo.variables->count(node->identifier_1->name) != 0){
       // declared in the current method
@@ -547,8 +553,9 @@ void CodeGenerator::visitMemberAccessNode(MemberAccessNode* node) {
 }
 
 void CodeGenerator::visitVariableNode(VariableNode* node) {
+  p "# Variable Node" e;
   node->visit_children(this);
-  
+
   if (currentMethodInfo.variables->count(node->identifier->name) != 0){
     // it's a local variable
     p "\tpush " + std::to_string(currentMethodInfo.variables->at(node->identifier->name).offset) + "(%ebp)" e;
@@ -576,22 +583,27 @@ void CodeGenerator::visitVariableNode(VariableNode* node) {
 }
 
 void CodeGenerator::visitIntegerLiteralNode(IntegerLiteralNode* node) {
+  p "# Integer Literal Node" e;
+
   node->visit_children(this);
 
   p "\tpush $" + std::to_string(node->integer->value) e;
 }
 
 void CodeGenerator::visitBooleanLiteralNode(BooleanLiteralNode* node) {
+  p "# Boolean Literalp Node" e;
   node->visit_children(this);
 
   p "\tpush $" + std::to_string(node->integer->value) e;
 }
 
 void CodeGenerator::visitNewNode(NewNode* node) {
-  node->visit_children(this);
+  p "# New Node" e;
+  //node->visit_children(this);
+  node->identifier->accept(this);
 
   int sizeOfClass = (*classTable)[node->identifier->name].membersSize;
-
+  
   // check for constructor
   if ((*classTable)[node->identifier->name].methods->count(node->identifier->name) != 0){
     // has a constructor
@@ -601,15 +613,16 @@ void CodeGenerator::visitNewNode(NewNode* node) {
 	(*i)->accept(this);
 	args++;
       }
-      p "\tpush $" + std::to_string(sizeOfClass) e;
-      p "\tcall malloc" e;
-      p "\tadd $4, %esp" e;
-      p "\tpush %eax" e;
-      p "\tcall " + node->identifier->name + "_" + node->identifier->name e;
-      p "add $" + std::to_string(args * 4) + ", %esp" e;
-      p "push %eax" e;
-      
     }
+    p "\tpush $" + std::to_string(sizeOfClass) e;
+    p "\tcall malloc" e;
+    p "\tadd $4, %esp" e;
+    p "\tpush %eax" e;
+    p "\tcall " + node->identifier->name + "_" + node->identifier->name e;
+    p "add $" + std::to_string(args * 4 + 4) + ", %esp" e;
+    p "push %eax" e;
+      
+    
   }else{
     // no constructor
     p "push $" + std::to_string(sizeOfClass) e;
@@ -620,25 +633,31 @@ void CodeGenerator::visitNewNode(NewNode* node) {
 }
 
 void CodeGenerator::visitIntegerTypeNode(IntegerTypeNode* node) {
+  p "# Integer Type Node" e;
   node->visit_children(this);
 }
 
 void CodeGenerator::visitBooleanTypeNode(BooleanTypeNode* node) {
+  p "# Boolean Node" e;
   node->visit_children(this);
 }
 
 void CodeGenerator::visitObjectTypeNode(ObjectTypeNode* node) {
+  p "# Object Type Node" e;
   node->visit_children(this);
 }
 
 void CodeGenerator::visitNoneNode(NoneNode* node) {
+  p "# None Node" e;
   node->visit_children(this);
 }
 
 void CodeGenerator::visitIdentifierNode(IdentifierNode* node) {
+  p "# Identifier Node" e;
   node->visit_children(this);
 }
 
 void CodeGenerator::visitIntegerNode(IntegerNode* node) {
+  p "# Integer Node" e;
   node->visit_children(this);
 }
